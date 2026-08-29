@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "jx 路线图 —— 从地基到替代期",
+    "quality_profile": "showcase",
+    "output": "jx-roadmap.html"
+  },
+  "lanes": [
+    { "id": "base", "label": "Phase 0 地基" },
+    { "id": "integrate", "label": "Phase 1 整合版 (v1)" },
+    { "id": "replace", "label": "Phase 2 替代期" },
+    { "id": "later", "label": "Phase 3 远期" }
+  ],
+  "mainPath": ["p0", "p1", "p2", "p3"],
+  "nodes": [
+    { "id": "p0", "lane": "base", "col": 1, "type": "backend", "label": "Phase 0 地基", "sublabel": "cargo+clap / ~/.jx", "tag": "工具本体" },
+    { "id": "p1", "lane": "integrate", "col": 1, "type": "backend", "label": "Phase 1 整合版", "sublabel": "JDK·依赖·搜索·运行", "width": 130, "tag": "调现有 CLI" },
+    { "id": "p2", "lane": "replace", "col": 1, "type": "backend", "label": "Phase 2 替代期", "sublabel": "解析内嵌·JVM·火焰图", "width": 130, "tag": "自实现 UX" },
+    { "id": "p3", "lane": "later", "col": 1, "type": "backend", "label": "Phase 3 远期", "sublabel": "REPL·fmt·LSP·审计", "width": 130 }
+  ],
+  "edges": [
+    { "id": "e01", "from": "p0", "to": "p1", "variant": "emphasis", "role": "main" },
+    { "id": "e12", "from": "p1", "to": "p2", "variant": "emphasis", "role": "main" },
+    { "id": "e23", "from": "p2", "to": "p3", "variant": "emphasis", "role": "main" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "整合期 (Phase 1)", "items": ["直接调现有 CLI/服务", "Coursier 解析、Adoptium 下载、Solr 搜索", "JDK 工具运行/诊断、async-profiler 火焰图"] },
+    { "dot": "emerald", "title": "替代期 (Phase 2)", "items": ["自实现 UX 层", "内嵌 Coursier 去外部依赖", "直连 JVM attach 替代 jstat/jcmd 文本", "自写 JFR 解析、捆绑 async-profiler"] },
+    { "dot": "amber", "title": "策略", "items": ["只替换客户端/UX 层", "不重写 HotSpot / Adoptium / Maven Central", "Phase 0 是全前提;1.x 是 2.x 的前置"] }
+  ]
+}

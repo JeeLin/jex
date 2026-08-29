@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "jx —— JVM 工具链大一统 CLI 架构",
+    "output": "jx-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "integrate", "label": "Phase 1 整合层", "focus": ["jx", "coursier", "maven-central", "adoptium", "jdk-tools", "async-profiler", "maven-project"], "note": "v1 直接调现有 CLI/服务,只做 UX 层" },
+      { "id": "state", "label": "本地状态与一致性", "focus": ["jx", "local-store"], "note": "jx.toml / lock / cache 保证可复现与跨设备一致" }
+    ]
+  },
+  "components": [
+    { "id": "jx", "type": "backend", "label": "jx", "sublabel": "单二进制 Rust CLI", "pos": [555, 320], "size": [180, 92], "tag": "uv/bun for Java" },
+    { "id": "coursier", "type": "external", "label": "Coursier (cs)", "sublabel": "依赖解析引擎", "pos": [110, 150], "size": [180, 70] },
+    { "id": "maven-central", "type": "cloud", "label": "Maven Central", "sublabel": "坐标搜索 Solr API", "pos": [110, 340], "size": [180, 70] },
+    { "id": "adoptium", "type": "cloud", "label": "Adoptium API", "sublabel": "JDK 下载源", "pos": [110, 530], "size": [180, 70] },
+    { "id": "jdk-tools", "type": "external", "label": "JDK 自带工具", "sublabel": "javac/java/jstat/jcmd/jfr", "pos": [950, 150], "size": [190, 70] },
+    { "id": "async-profiler", "type": "external", "label": "async-profiler", "sublabel": "火焰图 agent", "pos": [950, 340], "size": [190, 70] },
+    { "id": "maven-project", "type": "external", "label": "已有 Maven 项目", "sublabel": "pom.xml 互通", "pos": [950, 530], "size": [190, 70] },
+    { "id": "local-store", "type": "database", "label": "~/.jx 本地存储", "sublabel": "jx.toml / lock / cache", "pos": [520, 620], "size": [200, 70] }
+  ],
+  "connections": [
+    { "id": "jx-coursier", "from": "jx", "to": "coursier", "label": "解析依赖 · 整合→内嵌", "labelAt": [377, 244] },
+    { "id": "jx-search", "from": "jx", "to": "maven-central", "label": "搜索坐标 · 整合", "labelAt": [377, 340] },
+    { "id": "jx-jdk", "from": "jx", "to": "adoptium", "label": "下载 JDK · 整合", "labelAt": [377, 500] },
+    { "id": "jx-run", "from": "jx", "to": "jdk-tools", "label": "编译/运行+诊断 · 整合→替代", "labelAt": [842, 244] },
+    { "id": "jx-flame", "from": "jx", "to": "async-profiler", "label": "火焰图 · 捆绑", "labelAt": [900, 338] },
+    { "id": "jx-pom", "from": "jx", "to": "maven-project", "label": "import/export · 整合", "labelAt": [842, 500] },
+    { "id": "jx-state", "from": "jx", "to": "local-store", "label": "读写配置/缓存", "fromSide": "bottom", "toSide": "top" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "整合层(Phase 1)", "items": ["v1 直接调现有 CLI/服务", "Coursier 解析、Adoptium 下载、Solr 搜索", "JDK 工具运行/诊断、async-profiler 火焰图"] },
+    { "dot": "emerald", "title": "替代层(Phase 2)", "items": ["后续自实现 UX 层", "内嵌 Coursier 去外部依赖", "直连 JVM attach 替代 jstat/jcmd 文本", "自写 JFR 解析、捆绑 async-profiler 进发布包"] },
+    { "dot": "amber", "title": "本地状态与一致性", "items": ["jx.toml 声明依赖与 JDK 版本", "jx.lock.toml 冻结解析结果", "cache 统一存 jar,保证可复现"] }
+  ]
+}

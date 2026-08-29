@@ -1,0 +1,9 @@
+[package]
+name = "jx"
+version = "0.1.0"
+edition = "2021"
+description = "uv/bun for Java —— 单二进制 JVM 工具链 CLI"
+license = "MIT"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }

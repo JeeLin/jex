@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "jx run —— 一键运行调用链",
+    "quality_profile": "showcase",
+    "output": "jx-run.html",
+    "viewBox": [900, 760]
+  },
+  "participants": [
+    { "id": "dev", "type": "external", "label": "开发者", "sublabel": "命令行" },
+    { "id": "jx", "type": "backend", "label": "jx CLI", "sublabel": "Rust 单二进制" },
+    { "id": "config", "type": "database", "label": "jx 配置", "sublabel": "toml + lock" },
+    { "id": "coursier", "type": "external", "label": "Coursier (cs)", "sublabel": "解析引擎" },
+    { "id": "cache", "type": "database", "label": "~/.jx/cache", "sublabel": "jar 缓存" },
+    { "id": "jdk", "type": "external", "label": "目标 JDK", "sublabel": "javac + java" }
+  ],
+  "messages": [
+    { "id": "m1", "from": "dev", "to": "jx", "y": 200, "label": "jx run Main.java", "variant": "emphasis" },
+    { "id": "m2", "from": "jx", "to": "config", "y": 250, "label": "读 toml + lock,定 JDK 版本", "variant": "default" },
+    { "id": "m3", "from": "config", "to": "jx", "y": 292, "label": "依赖清单 + 版本", "variant": "return" },
+    { "id": "m4", "from": "jx", "to": "coursier", "y": 345, "label": "cs fetch -p <deps> --cache ~/.jx/cache", "variant": "default" },
+    { "id": "m5", "from": "coursier", "to": "cache", "y": 392, "label": "下载 jar", "variant": "dashed" },
+    { "id": "m6", "from": "coursier", "to": "jx", "y": 438, "label": "classpath 字符串", "variant": "return" },
+    { "id": "m7", "from": "jx", "to": "jdk", "y": 490, "label": "javac -cp <cp> -d .jx-build Main.java", "variant": "default" },
+    { "id": "m8", "from": "jdk", "to": "jx", "y": 532, "label": "编译产物 .class (命中缓存则跳过)", "variant": "return" },
+    { "id": "m9", "from": "jx", "to": "jdk", "y": 580, "label": "java -cp .jx-build:<cp> Main", "variant": "emphasis" },
+    { "id": "m10", "from": "jdk", "to": "dev", "y": 622, "label": "程序输出", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "jx", "from": 200, "to": 630, "type": "backend" },
+    { "participant": "coursier", "from": 340, "to": 445, "type": "external" },
+    { "participant": "jdk", "from": 485, "to": 628, "type": "external" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "整合现有 CLI", "items": ["jx 自己不解析/不编译", "调 Coursier 拿 classpath、调 javac/java 跑", "统一缓存落在 ~/.jx/cache"] },
+    { "dot": "emerald", "title": "Phase 2 之后", "items": ["内嵌 Coursier,去掉外部 cs", "编译缓存按 源+依赖 hash 命中跳过", "目标 JDK 由 .jx-version 钉定"] }
+  ]
+}

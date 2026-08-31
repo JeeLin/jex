@@ -200,10 +200,33 @@ pub fn remove(coord: &str) -> Result<()> {
     Ok(())
 }
 
-/// 更新依赖（暂不实现，留给后续）
+/// 更新依赖：重解析坐标以获取最新版本，重算锁文件
 pub fn update(coord: Option<&str>) -> Result<()> {
-    let _ = coord;
-    println!("jex update 尚未实现");
+    let mut config = read_jex_toml()?;
+    let dependencies = config.dependencies.get_or_insert_with(HashMap::new);
+
+    // 决定要更新的坐标列表
+    let targets: Vec<String> = match coord {
+        Some(c) => {
+            let (g, a) = parse_coord(c)?;
+            let full = format!("{}:{}", g, a);
+            if !dependencies.contains_key(&full) {
+                return Err(Error::new(format!("未找到依赖: {}", full)));
+            }
+            vec![full]
+        }
+        None => dependencies.keys().cloned().collect(),
+    };
+
+    for full in &targets {
+        let new_ver = resolve_latest_version(full)?;
+        dependencies.insert(full.clone(), new_ver);
+        println!("更新 {} -> {}", full, dependencies[full]);
+    }
+
+    write_jex_toml(&config)?;
+    update_lock_file(&config)?;
+
     Ok(())
 }
 

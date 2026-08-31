@@ -8,51 +8,35 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// 获取 ~/.jex/cache 目录路径
-fn cache_dir() -> Result<PathBuf> {
-    let home = std::env::var("HOME").map_err(|_| Error::new("找不到 HOME 环境变量"))?;
-    Ok(PathBuf::from(home).join(".jex").join("cache"))
-}
-
 /// 获取项目构建输出目录
 fn build_dir() -> Result<PathBuf> {
     let cwd = std::env::current_dir()?;
     Ok(cwd.join(".jex-build"))
 }
 
-/// 从 jex.lock.toml 构建 classpath
-fn build_classpath(lock: &deps::LockFile, cache: &Path) -> Result<String> {
+/// 从 jex.lock.toml 构建 classpath（调用 cs fetch 获取确切路径）
+fn build_classpath(lock: &deps::LockFile) -> Result<String> {
     let dependencies = lock.dependencies.clone().unwrap_or_default();
-    let mut jars = Vec::new();
+    let mut jars: Vec<String> = Vec::new();
 
     for coord in dependencies.keys() {
-        // 简化实现：直接查找 cache 中的 jar
-        // 实际应该调用 Coursier 获取确切路径
-        let parts: Vec<&str> = coord.split(':').collect();
-        if parts.len() >= 2 {
-            let group = parts[0].replace('.', "/");
-            let artifact = parts[1];
-            // 猜测 jar 路径（简化实现）
-            let jar_pattern = format!("{}-*.jar", artifact);
-            let group_dir = cache.join(&group).join(artifact);
-            if group_dir.exists() {
-                for entry in fs::read_dir(&group_dir)? {
-                    let entry = entry?;
-                    let name = entry.file_name();
-                    if let Some(name_str) = name.to_str() {
-                        if name_str.contains(&jar_pattern.replace("*", "")) && name_str.ends_with(".jar") {
-                            jars.push(entry.path());
-                        }
-                    }
+        // 逐坐标调用 cs fetch -p 获取 classpath
+        let output = std::process::Command::new("cs")
+            .args(["fetch", "-p", coord])
+            .output()?;
+
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                if !line.is_empty() {
+                    jars.push(line.to_string());
                 }
             }
         }
+        // cs fetch 失败时跳过该依赖（日志可加）
     }
 
-    Ok(jars.iter()
-        .map(|p| p.to_string_lossy().to_string())
-        .collect::<Vec<_>>()
-        .join(":"))
+    Ok(jars.join(":"))
 }
 
 /// 运行 Java 文件
@@ -79,10 +63,8 @@ pub fn run(file: &str, args: &[String]) -> Result<()> {
         return Err(Error::new(format!("javac 不存在: {}", javac_bin.display())));
     }
 
-    // 4. 构建 classpath
-    let cache = cache_dir()?;
-    let classpath = build_classpath(&lock, &cache)?;
-
+// 4. 构建 classpath
+    let classpath = build_classpath(&lock)?;
     // 5. 创建构建输出目录
     let build = build_dir()?;
     fs::create_dir_all(&build)?;
@@ -115,12 +97,13 @@ pub fn run(file: &str, args: &[String]) -> Result<()> {
     // 7. 运行
     println!("运行 {}...", file);
 
-    // 提取主类名（从文件名）
-    let main_class = file_path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .ok_or_else(|| Error::new("无法提取主类名"))?;
-
+    // 提取主类名：优先 [project].main，否则从文件名推导
+    let main_class = config
+        .project
+        .as_ref()
+        .and_then(|p| p.main.as_deref())
+        .or_else(|| file_path.file_stem().and_then(|s| s.to_str()))
+        .ok_or_else(|| Error::new("无法确定主类名：请在 jex.toml 中设置 [project].main 或传入文件路径"))?;
     let mut run_cmd = Command::new(&java_bin);
     run_cmd
         .arg("-cp")

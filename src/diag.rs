@@ -42,18 +42,22 @@ pub fn threads(pid: u32) -> Result<()> {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     // 解析线程统计
+    // jcmd Thread.print 输出中，每个线程声明为 "thread-name" #N ...
     let mut thread_count = 0;
     let mut daemon_count = 0;
     let mut blocked_count = 0;
 
     for line in stdout.lines() {
-        if line.contains("\"") {
+        let trimmed = line.trim_start();
+        // 线程声明行格式: "main" #1 daemon prio=5
+        if trimmed.starts_with('"') && trimmed.contains('#') {
             thread_count += 1;
+            if trimmed.contains("daemon") {
+                daemon_count += 1;
+            }
         }
-        if line.contains("daemon") {
-            daemon_count += 1;
-        }
-        if line.contains("BLOCKED") {
+        // 线程状态行包含 BLOCKED（如 java.lang.Thread.State: BLOCKED）
+        if trimmed == "java.lang.Thread.State: BLOCKED" {
             blocked_count += 1;
         }
     }

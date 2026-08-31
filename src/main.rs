@@ -1,5 +1,7 @@
 mod config;
+mod deps;
 mod error;
+mod jdk;
 
 use clap::{Args, Parser, Subcommand};
 use error::Result;
@@ -187,22 +189,22 @@ fn planned(phase: &str, detail: &str) {
 fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Commands::Jdk(c) => match c {
-            JdkCommand::Install(a) => Ok(planned("1.1", &format!("jdk install {}", a.version))),
-            JdkCommand::Use(a) => Ok(planned("1.1", &format!("jdk use {}", a.version))),
-            JdkCommand::List => Ok(planned("1.1", "jdk list")),
-            JdkCommand::Which => Ok(planned("1.1", "jdk which")),
-            JdkCommand::Doctor => Ok(planned("1.1", "jdk doctor")),
+            JdkCommand::Install(a) => jdk::install(&a.version),
+            JdkCommand::Use(a) => jdk::use_version(&a.version),
+            JdkCommand::List => jdk::list(),
+            JdkCommand::Which => jdk::which(),
+            JdkCommand::Doctor => jdk::doctor(),
         },
-        Commands::Init(a) => config::scaffold(a.name.as_deref()),
-        Commands::Add(a) => Ok(planned("1.2", &format!("add {} (exclude {:?})", a.coord, a.exclude))),
-        Commands::Remove(a) => Ok(planned("1.2", &format!("remove {}", a.coord))),
-        Commands::Update => Ok(planned("1.2", "update")),
+        Commands::Init(a) => deps::init(a.name.as_deref()),
+        Commands::Add(a) => deps::add(&a.coord, None),
+        Commands::Remove(a) => deps::remove(&a.coord),
+        Commands::Update => deps::update(None),
         Commands::Search(a) => Ok(planned("1.3", &format!("search {} (limit {})", a.query, a.limit))),
         Commands::Run(a) => Ok(planned("1.4", &format!("run {} {:?}", a.file, a.args))),
         Commands::Build => Ok(planned("1.4", "build")),
-        Commands::Tree => Ok(planned("1.2", "tree")),
-        Commands::Why(a) => Ok(planned("1.2", &format!("why {}", a.coord))),
-        Commands::Conflict => Ok(planned("1.2", "conflict")),
+        Commands::Tree => deps::tree(),
+        Commands::Why(a) => deps::why(&a.coord),
+        Commands::Conflict => deps::conflict(),
         Commands::Analyze => Ok(planned("2.x", "analyze")),
         Commands::Export => Ok(planned("1.6", "export maven")),
         Commands::Import => Ok(planned("1.6", "import pom")),

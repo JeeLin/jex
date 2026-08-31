@@ -1,4 +1,4 @@
-//! 错误体系(Phase 0 占位,后续 Phase 1 再细化)
+//! 错误体系
 use std::fmt;
 
 #[derive(Debug)]
@@ -14,6 +14,18 @@ impl std::error::Error for Error {}
 
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
+        Error(e.to_string())
+    }
+}
+
+impl From<toml::de::Error> for Error {
+    fn from(e: toml::de::Error) -> Self {
+        Error(e.to_string())
+    }
+}
+
+impl From<toml::ser::Error> for Error {
+    fn from(e: toml::ser::Error) -> Self {
         Error(e.to_string())
     }
 }

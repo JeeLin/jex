@@ -1,0 +1,57 @@
+# jex 开发设计文档
+
+## 整体规划
+
+项目分 4 个 Phase，每个 Phase 是可运行的纵向切片：
+
+### Phase 0 — 地基（已完成 ✅）
+工具本体骨架，无外部功能。
+- [x] 0.1 cargo init + clap 子命令骨架
+- [x] 0.2 ~/.jex 全局配置目录 + 项目级配置加载
+- [x] 0.3 错误体系 (anyhow) + 日志
+- [x] 0.4 自检并缓存 cs (Coursier CLI)
+
+### Phase 1 — 整合版（v1）← 新增（下一步）
+全走现有命令行/服务，整合 Coursier + Adoptium + jstat/jcmd。
+- [ ] 1.1 JDK 版本管理（mise 模型）
+- [ ] 1.2 依赖管理（init/add/remove/update + 锁文件）
+- [ ] 1.3 依赖搜索（Maven Central Solr API）
+- [ ] 1.4 一键运行（解析 → 编译 → 运行 + 缓存）
+- [ ] 1.5 诊断核心（gc/threads）
+- [ ] 1.6 生态互通（import/export pom）
+
+### Phase 2 — 自实现 UX 层
+逐个替换外部依赖，内嵌 coursier lib、结构化诊断、捆绑 async-profiler。
+- [ ] 2.1 依赖解析内嵌
+- [ ] 2.2 诊断结构化
+- [ ] 2.3 火焰图捆绑
+- [ ] 2.4 JFR 自解析
+- [ ] 2.5 诊断增强
+
+### Phase 3 — 扩展/远期
+脚本模式、REPL、热重载、fmt、monorepo、IDE 集成、self update 等。
+
+## 依赖关系
+
+```
+Phase 0 (地基) → Phase 1 (整合)
+                     ↓
+              1.1 JDK → 1.4 运行
+              1.2 依赖 → 1.4 运行
+                     ↓
+              Phase 2 (替代) → Phase 3 (扩展)
+```
+
+## 里程碑版本号规则
+
+- 语义版本风格：`v{major}.{minor}.{patch}`
+- patch：bug 修复、纯修复、重构
+- minor：新增功能（里程碑默认递增方式）
+- major：破坏性变更
+
+## 架构决策
+
+1. **工具本体用 Rust**：免 JDK，避免鸡生蛋问题
+2. **依赖解析用 Coursier**：不重造，直接调用
+3. **诊断用 JDK 自带工具**：jstat/jcmd/jfr + async-profiler，只做美化
+4. **导出 Maven 有损**：降低退出成本，非双向同步

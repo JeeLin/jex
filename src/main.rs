@@ -2,6 +2,10 @@ mod config;
 mod deps;
 mod error;
 mod jdk;
+mod search;
+mod run;
+mod export;
+mod diag;
 
 use clap::{Args, Parser, Subcommand};
 use error::Result;
@@ -97,10 +101,9 @@ enum JdkCommand {
 
 #[derive(Subcommand)]
 enum JavaCommand {
-    /// GC 概览
-    Gc,
+    Gc(GcArgs),
     /// 线程概览
-    Threads,
+    Threads(ThreadsArgs),
     /// 堆概览
     Heap,
     /// 火焰图(async-profiler)
@@ -168,10 +171,21 @@ struct FlameArgs {
 }
 
 #[derive(Args)]
-struct RecArgs {
+struct GcArgs {
+    /// 进程 ID
     pid: u32,
 }
 
+#[derive(Args)]
+struct ThreadsArgs {
+    /// 进程 ID
+    pid: u32,
+}
+
+#[derive(Args)]
+struct RecArgs {
+    pid: u32,
+}
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
@@ -199,22 +213,43 @@ fn run(cli: Cli) -> Result<()> {
         Commands::Add(a) => deps::add(&a.coord, None),
         Commands::Remove(a) => deps::remove(&a.coord),
         Commands::Update => deps::update(None),
-        Commands::Search(a) => Ok(planned("1.3", &format!("search {} (limit {})", a.query, a.limit))),
-        Commands::Run(a) => Ok(planned("1.4", &format!("run {} {:?}", a.file, a.args))),
-        Commands::Build => Ok(planned("1.4", "build")),
+        Commands::Search(a) => search::search(&a.query, a.limit),
+        Commands::Run(a) => run::run(&a.file, &a.args),
+        Commands::Build => {
+            planned("1.4", "build");
+            Ok(())
+        },
         Commands::Tree => deps::tree(),
         Commands::Why(a) => deps::why(&a.coord),
         Commands::Conflict => deps::conflict(),
-        Commands::Analyze => Ok(planned("2.x", "analyze")),
-        Commands::Export => Ok(planned("1.6", "export maven")),
-        Commands::Import => Ok(planned("1.6", "import pom")),
-        Commands::Java(c) => match c {
-            JavaCommand::Gc => Ok(planned("1.5", "java gc")),
-            JavaCommand::Threads => Ok(planned("1.5", "java threads")),
-            JavaCommand::Heap => Ok(planned("1.5", "java heap")),
-            JavaCommand::Flame(a) => Ok(planned("2.3", &format!("java flame {}", a.pid))),
-            JavaCommand::Rec(a) => Ok(planned("2.4", &format!("java rec {}", a.pid))),
-            JavaCommand::Top => Ok(planned("1.5", "java top")),
+        Commands::Analyze => {
+            planned("2.x", "analyze");
+            Ok(())
+        },
+Commands::Export => export::maven(),
+        Commands::Import => {
+            planned("1.6", "import pom");
+            Ok(())
+        },
+Commands::Java(c) => match c {
+            JavaCommand::Gc(a) => diag::gc(a.pid),
+            JavaCommand::Threads(a) => diag::threads(a.pid),
+            JavaCommand::Heap => {
+                planned("1.5", "java heap");
+                Ok(())
+            },
+            JavaCommand::Flame(a) => {
+                planned("2.3", &format!("java flame {}", a.pid));
+                Ok(())
+            },
+            JavaCommand::Rec(a) => {
+                planned("2.4", &format!("java rec {}", a.pid));
+                Ok(())
+            },
+            JavaCommand::Top => {
+                planned("1.5", "java top");
+                Ok(())
+            },
         },
     }
 }

@@ -1,5 +1,5 @@
 [package]
-name = "jx"
+name = "jex"
 version = "0.1.0"
 edition = "2021"
 description = "uv/bun for Java —— 单二进制 JVM 工具链 CLI"

@@ -6,7 +6,7 @@ use error::Result;
 
 #[derive(Parser)]
 #[command(
-    name = "jx",
+    name = "jex",
     version,
     about = "uv/bun for Java —— 单二进制 JVM 工具链 CLI",
     long_about = None
@@ -23,7 +23,7 @@ enum Commands {
     #[command(subcommand)]
     Jdk(JdkCommand),
 
-    /// 脚手架:生成 jx.toml + 标准目录
+    /// 脚手架:生成 jex.toml + 标准目录
     Init(InitArgs),
 
     /// 添加依赖
@@ -83,7 +83,7 @@ enum Commands {
 enum JdkCommand {
     /// 下载并安装指定版本
     Install(InstallArgs),
-    /// 切换版本(写 .jx-version)
+    /// 切换版本(写 .jex-version)
     Use(UseArgs),
     /// 列出可装 / 已装版本
     List,

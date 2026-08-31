@@ -1,4 +1,4 @@
-# jx 步骤规划
+# jex 步骤规划
 
 > 配套:PLAN.md(定位)、DESIGN.md(接口契约 + 第 10 节策略)、FEATURES.md(功能清单)。
 > 本文件只排**逻辑步骤**,不给日历时间。每步标注 `[整合]`=v1 走现有 CLI/服务,`[替代]`=后续自实现 UX 层(见 DESIGN.md 第 10 节)。
@@ -8,20 +8,20 @@
 ## Phase 0 —— 地基(工具本体,无外部功能)
 
 - **0.1** `cargo init` + `clap` 子命令骨架:`jdk` / `add` / `run` / `search` / `export` / `import` / `java` 占位。
-- **0.2** `~/.jx` 全局配置目录 + 项目级配置加载(`jx.toml` / `.jx-version`)。
+- **0.2** `~/.jex` 全局配置目录 + 项目级配置加载(`jex.toml` / `.jex-version`)。
 - **0.3** 错误体系(`anyhow`)+ 日志。
-- **0.4** 自检并缓存 `cs`(Coursier CLI)到 `~/.jx/bin`(外部依赖自动就位)。
+- **0.4** 自检并缓存 `cs`(Coursier CLI)到 `~/.jex/bin`(外部依赖自动就位)。
 
-**验收**:`jx --help` 显示全部子命令;`cs` 自检通过。
+**验收**:`jex --help` 显示全部子命令;`cs` 自检通过。
 
 ## Phase 1 —— 整合版(v1,全走现有命令行/服务) `[整合]`
 
 - **1.1 JDK( mise 模型 )**:Adoptium API 下载 / 安装 / 列出 / 钉版(`use`)/ `which` / `doctor`(跨设备一致性校验)。
-- **1.2 依赖**:`init` / `add` / `remove` / `update` → shell `cs fetch`;`jx.toml` + `jx.lock.toml` + 统一缓存 `~/.jx/cache`;含 `jx tree` / `why` / `conflict` 依赖分析(基于已解析树)。
+- **1.2 依赖**:`init` / `add` / `remove` / `update` → shell `cs fetch`;`jex.toml` + `jex.lock.toml` + 统一缓存 `~/.jex/cache`;含 `jex tree` / `why` / `conflict` 依赖分析(基于已解析树)。
 - **1.3 搜索**:`search <kw>` 查 Maven Central Solr API,返回坐标 + 最新版本 + 描述,选中即 `add`。
 - **1.4 运行**:`run <file>` 解析依赖 → 拼 classpath → `javac` → `java`;编译缓存(源+依赖 hash)。
 - **1.5 诊断(核心)**:`java gc <pid>`(包 `jstat`,结构化输出优先)/ `java threads <pid>`(包 `jcmd Thread.print`)。
-- **1.6 互通**:`import pom`(已有 Maven 项目用 `jx run`)/ `export maven`(导出种子 `pom.xml`)。
+- **1.6 互通**:`import pom`(已有 Maven 项目用 `jex run`)/ `export maven`(导出种子 `pom.xml`)。
 
 **验收**:完整走通「装 JDK → 加 gson → 跑一段代码 → search → 导出/导入 pom」;对真进程 `gc`/`threads` 出清晰报告。
 
@@ -37,7 +37,7 @@
 
 ## Phase 3 —— 扩展 / 远期
 
-- 脚本模式 `//DEPS`、REPL(`jx repl`)、`watch` 热重载、`fmt`(google-java-format)、monorepo 多模块、IDE/LSP、`self update`、私服/离线/代理、依赖审计(OSV)、Gradle 互转。
+- 脚本模式 `//DEPS`、REPL(`jex repl`)、`watch` 热重载、`fmt`(google-java-format)、monorepo 多模块、IDE/LSP、`self update`、私服/离线/代理、依赖审计(OSV)、Gradle 互转。
 
 **验收**:按 FEATURES.md `[远期]` 逐条。
 

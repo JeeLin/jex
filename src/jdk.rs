@@ -62,7 +62,7 @@ pub fn which_java_home() -> Result<PathBuf> {
         if home.exists() {
             return Ok(home);
         }
-        return Err(Error::new(&format!(
+        return Err(Error::new(format!(
             "版本 {} 已声明但未安装，请运行 jex jdk install {}",
             ver, ver
         )));
@@ -113,13 +113,13 @@ pub fn install(version: &str) -> Result<()> {
         "linux" => "linux",
         "macos" => "mac",
         "windows" => "windows",
-        _ => return Err(Error::new(&format!("不支持的操作系统: {}", std::env::consts::OS))),
+        _ => return Err(Error::new(format!("不支持的操作系统: {}", std::env::consts::OS))),
     };
 
     let arch = match std::env::consts::ARCH {
         "x86_64" => "x64",
         "aarch64" => "aarch64",
-        _ => return Err(Error::new(&format!("不支持的架构: {}", std::env::consts::ARCH))),
+        _ => return Err(Error::new(format!("不支持的架构: {}", std::env::consts::ARCH))),
     };
 
     let url = format!(
@@ -213,7 +213,7 @@ pub fn install(version: &str) -> Result<()> {
 pub fn use_version(version: &str) -> Result<()> {
     let dir = jdks_dir()?.join(version);
     if !dir.exists() {
-        return Err(Error::new(&format!(
+        return Err(Error::new(format!(
             "JDK {} 未安装，请先运行 jex jdk install {}",
             version, version
         )));

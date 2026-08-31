@@ -4,7 +4,6 @@
 //! - remove: 从 jex.toml 删除依赖，重算锁文件
 //! - update: 更新依赖版本
 
-use crate::config::jex_home;
 use crate::error::{Error, Result};
 use std::collections::HashMap;
 use std::fs;
@@ -189,7 +188,7 @@ pub fn remove(coord: &str) -> Result<()> {
     let full_coord = format!("{}:{}", group, artifact);
 
     if dependencies.remove(&full_coord).is_none() {
-        return Err(Error::new(&format!("未找到依赖: {}", full_coord)));
+        return Err(Error::new(format!("未找到依赖: {}", full_coord)));
     }
 
     write_jex_toml(&config)?;
@@ -212,7 +211,7 @@ pub fn update(coord: Option<&str>) -> Result<()> {
 fn parse_coord(coord: &str) -> Result<(String, String)> {
     let parts: Vec<&str> = coord.split(':').collect();
     if parts.len() < 2 {
-        return Err(Error::new(&format!(
+        return Err(Error::new(format!(
             "无效的坐标格式: {}（应为 group:artifact）",
             coord
         )));
@@ -227,7 +226,7 @@ fn resolve_latest_version(coord: &str) -> Result<String> {
         .output()?;
 
     if !output.status.success() {
-        return Err(Error::new(&format!(
+        return Err(Error::new(format!(
             "Coursier 解析失败: {}",
             String::from_utf8_lossy(&output.stderr)
         )));
@@ -237,7 +236,7 @@ fn resolve_latest_version(coord: &str) -> Result<String> {
     let versions: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
 
     if versions.is_empty() {
-        return Err(Error::new(&format!("未找到依赖: {}", coord)));
+        return Err(Error::new(format!("未找到依赖: {}", coord)));
     }
 
     // 返回最后一个版本（通常是最新版）
@@ -300,7 +299,7 @@ pub fn why(coord: &str) -> Result<()> {
 /// 依赖冲突分析（简化实现）
 pub fn conflict() -> Result<()> {
     let lock = read_jex_lock()?;
-    let dependencies = lock.dependencies.unwrap_or_default();
+let _dependencies = lock.dependencies.unwrap_or_default();
 
     println!("依赖冲突分析:");
     println!("  当前无冲突（简化实现）");

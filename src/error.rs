@@ -30,6 +30,12 @@ impl From<toml::ser::Error> for Error {
     }
 }
 
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Error(e.to_string())
+    }
+}
+
 impl Error {
     pub fn new(msg: impl Into<String>) -> Self {
         Error(msg.into())

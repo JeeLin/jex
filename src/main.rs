@@ -194,10 +194,10 @@ fn main() {
     }
 }
 
-/// 统一的“规划中”占位输出,标注该命令归属的 Phase。
-fn planned(phase: &str, detail: &str) {
-    println!("[规划中 · {phase}] {detail}");
-    println!("  该能力将在对应 Phase 落地,当前为 Phase 0 骨架。");
+/// 提示命令还未实现的辅助函数
+fn planned(phase: &str, detail: &str) -> Result<()> {
+    println!("[{phase}] {detail} 尚未实现");
+    Ok(())
 }
 
 fn run(cli: Cli) -> Result<()> {
@@ -215,41 +215,20 @@ fn run(cli: Cli) -> Result<()> {
         Commands::Update => deps::update(None),
         Commands::Search(a) => search::search(&a.query, a.limit),
         Commands::Run(a) => run::run(&a.file, &a.args),
-        Commands::Build => {
-            planned("1.4", "build");
-            Ok(())
-        },
+Commands::Build => planned("1.4", "build"),
         Commands::Tree => deps::tree(),
         Commands::Why(a) => deps::why(&a.coord),
         Commands::Conflict => deps::conflict(),
-        Commands::Analyze => {
-            planned("2.x", "analyze");
-            Ok(())
-        },
+Commands::Analyze => planned("2.x", "analyze"),
 Commands::Export => export::maven(),
-        Commands::Import => {
-            planned("1.6", "import pom");
-            Ok(())
-        },
+Commands::Import => planned("2.x", "import pom"),
 Commands::Java(c) => match c {
             JavaCommand::Gc(a) => diag::gc(a.pid),
             JavaCommand::Threads(a) => diag::threads(a.pid),
-            JavaCommand::Heap => {
-                planned("1.5", "java heap");
-                Ok(())
-            },
-            JavaCommand::Flame(a) => {
-                planned("2.3", &format!("java flame {}", a.pid));
-                Ok(())
-            },
-            JavaCommand::Rec(a) => {
-                planned("2.4", &format!("java rec {}", a.pid));
-                Ok(())
-            },
-            JavaCommand::Top => {
-                planned("1.5", "java top");
-                Ok(())
-            },
+JavaCommand::Heap => planned("2.x", "java heap"),
+JavaCommand::Flame(a) => planned("2.3", &format!("java flame {}", a.pid)),
+JavaCommand::Rec(a) => planned("2.4", &format!("java rec {}", a.pid)),
+JavaCommand::Top => planned("2.x", "java top"),
         },
     }
 }

@@ -1,15 +1,6 @@
-mod config;
-mod deps;
-mod diag;
-mod error;
-mod export;
-mod jdk;
-mod run;
-mod search;
-mod util;
-
 use clap::{Args, Parser, Subcommand};
-use error::Result;
+use jex_core::error::Result;
+use jex_core::{deps, diag, export, jdk, run, search};
 
 #[derive(Parser)]
 #[command(
@@ -190,6 +181,7 @@ struct ThreadsArgs {
 struct RecArgs {
     pid: u32,
 }
+
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {

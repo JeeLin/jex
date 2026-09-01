@@ -22,6 +22,7 @@
 
 ### Phase 2 — 自实现 UX 层 ← 新增（下一步）
 逐个替换外部依赖，内嵌 coursier lib、结构化诊断、捆绑 async-profiler。
+- [ ] 2.0 Workspace 多 crate 拆分（jex-core + jex-cli）
 - [ ] 2.1 依赖解析内嵌
 - [ ] 2.2 诊断结构化
 - [ ] 2.3 火焰图捆绑

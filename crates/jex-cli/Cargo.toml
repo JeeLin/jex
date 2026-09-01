@@ -1,0 +1,14 @@
+[package]
+name = "jex-cli"
+version = "0.3.0"
+edition = "2021"
+description = "jex CLI - JVM toolchain command line interface"
+license = "MIT"
+
+[[bin]]
+name = "jex"
+path = "src/main.rs"
+
+[dependencies]
+jex-core = { path = "../jex-core" }
+clap = { version = "4", features = ["derive"] }

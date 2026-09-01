@@ -225,8 +225,8 @@ fn run(cli: Cli) -> Result<()> {
         Commands::Export => export::maven(),
         Commands::Import => planned("2.x", "import pom"),
         Commands::Java(c) => match c {
-            JavaCommand::Gc(a) => diag::gc(a.pid),
-            JavaCommand::Threads(a) => diag::threads(a.pid),
+            JavaCommand::Gc(a) => diag::gc_tui(a.pid),
+            JavaCommand::Threads(a) => diag::threads_tui(a.pid),
             JavaCommand::Heap => planned("2.x", "java heap"),
             JavaCommand::Flame(a) => planned("2.3", &format!("java flame {}", a.pid)),
             JavaCommand::Rec(a) => planned("2.4", &format!("java rec {}", a.pid)),

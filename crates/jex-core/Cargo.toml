@@ -11,3 +11,5 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 crossterm = "0.28"
 atty = "0.2"
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"] }
+quick-xml = "0.37"

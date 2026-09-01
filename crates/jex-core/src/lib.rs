@@ -4,6 +4,7 @@ pub mod diag;
 pub mod error;
 pub mod export;
 pub mod jdk;
+pub mod resolver;
 pub mod run;
 pub mod search;
 pub mod util;

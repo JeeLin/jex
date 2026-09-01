@@ -23,11 +23,12 @@
 ### Phase 2 — 自实现 UX 层
 逐个替换外部依赖，内嵌 coursier lib、结构化诊断、捆绑 async-profiler。
 - [x] 2.0 Workspace 多 crate 拆分（jex-core + jex-cli）✅ v0.3.0
-- [ ] 2.1 依赖解析内嵌 ← 新增（下一步）
+- [x] 2.1 依赖解析内嵌 ✅ v0.4.0
 - [x] 2.2 诊断结构化 ✅ v0.3.0（jstat/jcmd 结构化解析 + crossterm TUI）
 - [ ] 2.3 火焰图捆绑
 - [ ] 2.4 JFR 自解析
 - [ ] 2.5 诊断增强
+
 ### Phase 3 — 扩展/远期
 脚本模式、REPL、热重载、fmt、monorepo、IDE 集成、self update 等。
 
@@ -55,3 +56,22 @@ Phase 0 (地基) → Phase 1 (整合)
 2. **依赖解析用 Coursier**：不重造，直接调用
 3. **诊断用 JDK 自带工具**：jstat/jcmd/jfr + async-profiler，只做美化
 4. **导出 Maven 有损**：降低退出成本，非双向同步
+
+## 里程碑划分
+
+### v0.2.0 Phase 1 整合版 ✅
+- **核心功能**：JDK 管理 + 依赖管理 + 搜索 + 运行 + 诊断 + 生态互通（全部走 shell cs/原生命令）
+- **子任务**：6 个（1.1–1.6）
+- **版本类型**：minor
+
+### v0.3.0 Phase 2.0 Workspace 拆分 + 诊断结构化 ✅
+- **核心功能**：jex-core + jex-cli 拆分、jstat/jcmd 结构化解析、crossterm TUI、cs 自动下载、CI + mise 接入
+- **子任务**：4 个
+- **版本类型**：minor
+
+### v0.4.0 依赖解析内嵌 ← 新增（下一步）
+- **核心功能**：将 `deps.rs` / `search.rs` / `run.rs` 中所有 `Command::new("cs")` 替换为 Rust 原生依赖解析（基于 coursier-rs 或自建轻量解析），消除 cs CLI 依赖
+- **子任务预估**：4–6 个（依赖解析库选型与接入、deps.rs 迁移、search.rs 迁移、run.rs classpath 构建迁移、e2e 测试、CI 验证）
+- **依赖**：v0.3.0（需要 workspace 拆分完成后的 jex-core crate）
+- **版本类型**：minor
+- **版本号**：v0.4.0

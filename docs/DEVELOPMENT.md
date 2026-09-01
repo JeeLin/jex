@@ -20,15 +20,14 @@
 - [x] 1.5 诊断核心（gc/threads）
 - [x] 1.6 生态互通（import/export pom）
 
-### Phase 2 — 自实现 UX 层 ← 新增（下一步）
+### Phase 2 — 自实现 UX 层
 逐个替换外部依赖，内嵌 coursier lib、结构化诊断、捆绑 async-profiler。
-- [ ] 2.0 Workspace 多 crate 拆分（jex-core + jex-cli）
-- [ ] 2.1 依赖解析内嵌
-- [ ] 2.2 诊断结构化
+- [x] 2.0 Workspace 多 crate 拆分（jex-core + jex-cli）✅ v0.3.0
+- [ ] 2.1 依赖解析内嵌 ← 新增（下一步）
+- [x] 2.2 诊断结构化 ✅ v0.3.0（jstat/jcmd 结构化解析 + crossterm TUI）
 - [ ] 2.3 火焰图捆绑
 - [ ] 2.4 JFR 自解析
 - [ ] 2.5 诊断增强
-
 ### Phase 3 — 扩展/远期
 脚本模式、REPL、热重载、fmt、monorepo、IDE 集成、self update 等。
 

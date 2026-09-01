@@ -16,8 +16,6 @@ Thumbs.db
 
 # Dev flow / milestones (local only)
 .dev-flow/
-
-# Generated HTML visualizations (regenerable)
 *.html
 
 # Workflow/sequence JSON (regenerable)

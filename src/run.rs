@@ -63,7 +63,7 @@ pub fn run(file: &str, args: &[String]) -> Result<()> {
         return Err(Error::new(format!("javac 不存在: {}", javac_bin.display())));
     }
 
-// 4. 构建 classpath
+    // 4. 构建 classpath
     let classpath = build_classpath(&lock)?;
     // 5. 创建构建输出目录
     let build = build_dir()?;
@@ -103,7 +103,9 @@ pub fn run(file: &str, args: &[String]) -> Result<()> {
         .as_ref()
         .and_then(|p| p.main.as_deref())
         .or_else(|| file_path.file_stem().and_then(|s| s.to_str()))
-        .ok_or_else(|| Error::new("无法确定主类名：请在 jex.toml 中设置 [project].main 或传入文件路径"))?;
+        .ok_or_else(|| {
+            Error::new("无法确定主类名：请在 jex.toml 中设置 [project].main 或传入文件路径")
+        })?;
     let mut run_cmd = Command::new(&java_bin);
     run_cmd
         .arg("-cp")

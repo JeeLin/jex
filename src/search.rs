@@ -40,8 +40,7 @@ struct SearchDoc {
 pub fn search(keyword: &str, limit: usize) -> Result<()> {
     let url = format!(
         "https://search.maven.org/solrsearch/select?q={}&rows={}&wt=json",
-        keyword,
-        limit
+        keyword, limit
     );
 
     let output = std::process::Command::new("curl")
@@ -87,7 +86,6 @@ pub fn search(keyword: &str, limit: usize) -> Result<()> {
 pub fn versions(coord: &str) -> Result<()> {
     let (group, artifact) = parse_coord(coord)?;
 
-
     let url = format!(
         "https://search.maven.org/solrsearch/select?q=g:{}+AND+a:{}&core=gav&rows=100&wt=json",
         group, artifact
@@ -118,7 +116,11 @@ pub fn versions(coord: &str) -> Result<()> {
 
     for doc in &docs {
         if let Some(version) = &doc.version_count {
-            println!("  {} (共 {} 个版本)", doc.latest_version.as_deref().unwrap_or("?"), version);
+            println!(
+                "  {} (共 {} 个版本)",
+                doc.latest_version.as_deref().unwrap_or("?"),
+                version
+            );
         } else {
             println!("  {}", doc.latest_version.as_deref().unwrap_or("?"));
         }

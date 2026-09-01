@@ -113,13 +113,23 @@ pub fn install(version: &str) -> Result<()> {
         "linux" => "linux",
         "macos" => "mac",
         "windows" => "windows",
-        _ => return Err(Error::new(format!("不支持的操作系统: {}", std::env::consts::OS))),
+        _ => {
+            return Err(Error::new(format!(
+                "不支持的操作系统: {}",
+                std::env::consts::OS
+            )))
+        }
     };
 
     let arch = match std::env::consts::ARCH {
         "x86_64" => "x64",
         "aarch64" => "aarch64",
-        _ => return Err(Error::new(format!("不支持的架构: {}", std::env::consts::ARCH))),
+        _ => {
+            return Err(Error::new(format!(
+                "不支持的架构: {}",
+                std::env::consts::ARCH
+            )))
+        }
     };
 
     let url = format!(
@@ -132,16 +142,15 @@ pub fn install(version: &str) -> Result<()> {
     fs::create_dir_all(&temp_dir)?;
 
     // 使用 curl 下载
-    let archive_name = if os == "windows" { "jdk.zip" } else { "jdk.tar.gz" };
+    let archive_name = if os == "windows" {
+        "jdk.zip"
+    } else {
+        "jdk.tar.gz"
+    };
     let archive_path = temp_dir.join(archive_name);
 
     let status = std::process::Command::new("curl")
-        .args([
-            "-L",
-            "-o",
-            archive_path.to_str().unwrap(),
-            &url,
-        ])
+        .args(["-L", "-o", archive_path.to_str().unwrap(), &url])
         .status()?;
 
     if !status.success() {

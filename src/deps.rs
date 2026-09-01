@@ -231,7 +231,6 @@ pub fn update(coord: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-
 /// 调用 Coursier 获取最新版本
 fn resolve_latest_version(coord: &str) -> Result<String> {
     let output = std::process::Command::new("cs")
@@ -301,7 +300,10 @@ pub fn why(coord: &str) -> Result<()> {
     let full_coord = format!("{}:{}", group, artifact);
 
     if let Some(version) = dependencies.get(&full_coord) {
-        println!("{} {} 被直接依赖（在 jex.toml 中声明）", full_coord, version);
+        println!(
+            "{} {} 被直接依赖（在 jex.toml 中声明）",
+            full_coord, version
+        );
     } else {
         println!("未找到依赖: {}", full_coord);
     }
@@ -312,7 +314,7 @@ pub fn why(coord: &str) -> Result<()> {
 /// 依赖冲突分析（简化实现）
 pub fn conflict() -> Result<()> {
     let lock = read_jex_lock()?;
-let _dependencies = lock.dependencies.unwrap_or_default();
+    let _dependencies = lock.dependencies.unwrap_or_default();
 
     println!("依赖冲突分析:");
     println!("  当前无冲突（简化实现）");

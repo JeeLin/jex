@@ -9,4 +9,3 @@ pub fn jex_home() -> Result<PathBuf> {
     let home = std::env::var("HOME").map_err(|_| Error::new("找不到 HOME 环境变量"))?;
     Ok(PathBuf::from(home).join(".jex"))
 }
-

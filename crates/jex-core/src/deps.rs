@@ -255,19 +255,47 @@ fn update_lock_file(config: &ProjectConfig) -> Result<()> {
     Ok(())
 }
 
-/// 依赖树（简化实现）
+/// 依赖树（使用 resolver 递归解析传递依赖并展示树形结构）
 pub fn tree() -> Result<()> {
     let lock = read_jex_lock()?;
-    let dependencies = lock.dependencies.unwrap_or_default();
+    let dependencies = lock.dependencies.clone().unwrap_or_default();
 
     if dependencies.is_empty() {
         println!("无依赖");
         return Ok(());
     }
 
-    println!("依赖树:");
-    for (coord, version) in &dependencies {
-        println!("  {} {}", coord, version);
+    // 从 jex.toml 读取项目名
+    let project_name = std::fs::read_to_string(jex_toml_path()?)
+        .ok()
+        .and_then(|c| c.lines()
+            .find(|l| l.starts_with("name"))
+            .and_then(|l| l.split("=").nth(1))
+            .map(|s| s.trim().trim_matches('"').to_string()))
+        .unwrap_or_else(|| "project".to_string());
+
+    println!("{}:", project_name);
+    for (i, (coord, version)) in dependencies.iter().enumerate() {
+        let is_last = i == dependencies.len() - 1;
+        let connector = if is_last { "└─ " } else { "├─ " };
+        println!("  {}{}:{}", connector, coord, version);
+
+        // 递归解析传递依赖（深度限制由 resolver 内部处理）
+        match crate::resolver::resolve_dependencies(coord) {
+            Ok(node) => {
+                let child_prefix = if is_last { "   " } else { "│  " };
+                let tree_str = crate::resolver::format_tree(&node, &format!("  {}", child_prefix), true);
+                // 只显示子节点（跳过根节点自身）
+                for line in tree_str.lines() {
+                    if !line.is_empty() {
+                        println!("    {}", line);
+                    }
+                }
+            }
+            Err(e) => {
+                println!("    ⚠️ 无法解析依赖: {}", e);
+            }
+        }
     }
 
     Ok(())

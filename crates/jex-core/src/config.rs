@@ -20,6 +20,13 @@ fn bin_dir() -> Result<PathBuf> {
     Ok(dir)
 }
 
+/// 返回 ~/.jex/m2/ 缓存目录（替代 cs fetch 的本地 jar 仓库）。
+pub fn jex_m2_cache() -> Result<PathBuf> {
+    let dir = jex_home()?.join("m2");
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
 /// 返回 cs 可执行文件路径。
 fn cs_path() -> Result<PathBuf> {
     Ok(bin_dir()?.join("cs"))

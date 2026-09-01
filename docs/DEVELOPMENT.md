@@ -11,16 +11,16 @@
 - [x] 0.3 错误体系 (anyhow) + 日志
 - [x] 0.4 自检并缓存 cs (Coursier CLI)
 
-### Phase 1 — 整合版（v1）← 新增（下一步）
+### Phase 1 — 整合版（v1）✅ 已完成
 全走现有命令行/服务，整合 Coursier + Adoptium + jstat/jcmd。
-- [ ] 1.1 JDK 版本管理（mise 模型）
-- [ ] 1.2 依赖管理（init/add/remove/update + 锁文件）
-- [ ] 1.3 依赖搜索（Maven Central Solr API）
-- [ ] 1.4 一键运行（解析 → 编译 → 运行 + 缓存）
-- [ ] 1.5 诊断核心（gc/threads）
-- [ ] 1.6 生态互通（import/export pom）
+- [x] 1.1 JDK 版本管理（mise 模型）
+- [x] 1.2 依赖管理（init/add/remove/update + 锁文件）
+- [x] 1.3 依赖搜索（Maven Central Solr API）
+- [x] 1.4 一键运行（解析 → 编译 → 运行 + 缓存）
+- [x] 1.5 诊断核心（gc/threads）
+- [x] 1.6 生态互通（import/export pom）
 
-### Phase 2 — 自实现 UX 层
+### Phase 2 — 自实现 UX 层 ← 新增（下一步）
 逐个替换外部依赖，内嵌 coursier lib、结构化诊断、捆绑 async-profiler。
 - [ ] 2.1 依赖解析内嵌
 - [ ] 2.2 诊断结构化

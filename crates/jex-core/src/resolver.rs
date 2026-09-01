@@ -45,27 +45,31 @@ fn parse_coord(coord: &str) -> Result<(&str, &str)> {
     Ok((parts[0], parts[1]))
 }
 
+/// 创建带 User-Agent 的 blocking client（Maven Central 要求 User-Agent）
+fn http_get(url: &str) -> Result<String> {
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("jex/0.4.0 (Rust)")
+        .build()
+        .map_err(|e| Error::new(format!("HTTP client 创建失败: {}", e)))?;
+    let resp = client
+        .get(url)
+        .send()
+        .map_err(|e| Error::new(format!("HTTP 请求失败: {}", e)))?;
+    resp.text()
+        .map_err(|e| Error::new(format!("读取响应失败: {}", e)))
+}
+
 /// 获取 Maven Central search API 返回的版本列表（降序排列）
 fn search_versions(group: &str, artifact: &str) -> Result<Vec<String>> {
     let url = format!(
         "https://search.maven.org/solrsearch/select?q=g:{}+AND+a:{}&core=gav&rows=200&wt=json",
         group, artifact
     );
-    let resp = reqwest::blocking::get(&url)
-        .map_err(|e| Error::new(format!("HTTP 请求失败: {}", e)))?;
-    let body = resp
-        .text()
-        .map_err(|e| Error::new(format!("读取响应失败: {}", e)))?;
+    let body = http_get(&url)?;
     let sr: SearchResponse =
         serde_json::from_str(&body).map_err(|e| Error::new(format!("JSON 解析失败: {}", e)))?;
-    let docs = sr
-        .response
-        .and_then(|r| r.docs)
-        .unwrap_or_default();
-    Ok(docs
-        .into_iter()
-        .filter_map(|d| d.version)
-        .collect())
+    let docs = sr.response.and_then(|r| r.docs).unwrap_or_default();
+    Ok(docs.into_iter().filter_map(|d| d.version).collect())
 }
 
 /// 通过 Maven Central search API 获取最新版本号
@@ -85,17 +89,11 @@ fn fetch_pom(group: &str, artifact: &str, version: &str) -> Result<String> {
         "https://repo1.maven.org/maven2/{}/{}/{}/{}-{}.pom",
         path, artifact, version, artifact, version
     );
-    let resp = reqwest::blocking::get(&url)
-        .map_err(|e| Error::new(format!("POM 下载失败: {}", e)))?;
-    if !resp.status().is_success() {
-        return Err(Error::new(format!(
-            "POM 下载失败: {} (HTTP {})",
-            url,
-            resp.status()
-        )));
+    let body = http_get(&url)?;
+    if body.is_empty() {
+        return Err(Error::new(format!("POM 下载失败（响应为空）: {}", url)));
     }
-    resp.text()
-        .map_err(|e| Error::new(format!("读取 POM 失败: {}", e)))
+    Ok(body)
 }
 
 /// 从 POM XML 中提取依赖列表（group:artifact:version，仅 compile/runtime scope）
@@ -145,10 +143,8 @@ fn parse_pom_dependencies(pom: &str) -> Result<Vec<(String, String, String)>> {
                         "artifactId" => current_artifact = text,
                         "version" => current_version = text,
                         "scope" => current_scope = text,
-                        "optional" => {
-                            if text == "true" {
-                                skip_optional = true;
-                            }
+                        "optional" if text == "true" => {
+                            skip_optional = true;
                         }
                         _ => {}
                     }
@@ -263,7 +259,11 @@ pub fn format_tree(node: &DepNode, prefix: &str, is_last: bool) -> String {
     );
     let child_prefix = format!("{}{}", prefix, if is_last { "   " } else { "│  " });
     for (i, child) in node.children.iter().enumerate() {
-        result.push_str(&format_tree(child, &child_prefix, i == node.children.len() - 1));
+        result.push_str(&format_tree(
+            child,
+            &child_prefix,
+            i == node.children.len() - 1,
+        ));
     }
     result
 }

@@ -268,10 +268,12 @@ pub fn tree() -> Result<()> {
     // 从 jex.toml 读取项目名
     let project_name = std::fs::read_to_string(jex_toml_path()?)
         .ok()
-        .and_then(|c| c.lines()
-            .find(|l| l.starts_with("name"))
-            .and_then(|l| l.split("=").nth(1))
-            .map(|s| s.trim().trim_matches('"').to_string()))
+        .and_then(|c| {
+            c.lines()
+                .find(|l| l.starts_with("name"))
+                .and_then(|l| l.split("=").nth(1))
+                .map(|s| s.trim().trim_matches('"').to_string())
+        })
         .unwrap_or_else(|| "project".to_string());
 
     println!("{}:", project_name);
@@ -284,7 +286,8 @@ pub fn tree() -> Result<()> {
         match crate::resolver::resolve_dependencies(coord) {
             Ok(node) => {
                 let child_prefix = if is_last { "   " } else { "│  " };
-                let tree_str = crate::resolver::format_tree(&node, &format!("  {}", child_prefix), true);
+                let tree_str =
+                    crate::resolver::format_tree(&node, &format!("  {}", child_prefix), true);
                 // 只显示子节点（跳过根节点自身）
                 for line in tree_str.lines() {
                     if !line.is_empty() {

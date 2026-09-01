@@ -4,8 +4,8 @@
 //! - remove: 从 jex.toml 删除依赖，重算锁文件
 //! - update: 更新依赖版本
 
-use crate::config::ensure_cs;
 use crate::error::{Error, Result};
+use crate::resolver;
 use crate::util::parse_coord;
 use std::collections::HashMap;
 use std::fs;
@@ -232,31 +232,9 @@ pub fn update(coord: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-/// 调用 Coursier 获取最新版本
+/// 通过 resolver 模块获取最新版本（已迁移到原生解析）
 fn resolve_latest_version(coord: &str) -> Result<String> {
-    let cs = ensure_cs()?;
-    let output = std::process::Command::new(&cs)
-        .args(["complete", coord])
-        .output()?;
-
-    if !output.status.success() {
-        return Err(Error::new(format!(
-            "Coursier 解析失败: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let versions: Vec<&str> = stdout.lines().filter(|l| !l.is_empty()).collect();
-
-    if versions.is_empty() {
-        return Err(Error::new(format!("未找到依赖: {}", coord)));
-    }
-
-    // `cs complete` 按语义版本号升序输出，取最后一个即为最新版本。
-    Ok(versions.last()
-        .expect("上方已检查 versions 非空")
-        .to_string())
+    resolver::resolve_latest(coord)
 }
 
 /// 更新锁文件（简化实现：只记录直接依赖）

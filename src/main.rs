@@ -6,6 +6,7 @@ mod search;
 mod run;
 mod export;
 mod diag;
+mod util;
 
 use clap::{Args, Parser, Subcommand};
 use error::Result;
@@ -139,6 +140,9 @@ struct SearchArgs {
     query: String,
     #[arg(short, long, default_value_t = 20)]
     limit: usize,
+    /// 列出指定 artifact 的全部可用版本
+    #[arg(long)]
+    versions: bool,
 }
 
 #[derive(Args)]
@@ -213,7 +217,13 @@ fn run(cli: Cli) -> Result<()> {
         Commands::Add(a) => deps::add(&a.coord, None),
         Commands::Remove(a) => deps::remove(&a.coord),
         Commands::Update => deps::update(None),
-        Commands::Search(a) => search::search(&a.query, a.limit),
+        Commands::Search(a) => {
+            if a.versions {
+                search::versions(&a.query)
+            } else {
+                search::search(&a.query, a.limit)
+            }
+        },
         Commands::Run(a) => run::run(&a.file, &a.args),
 Commands::Build => planned("1.4", "build"),
         Commands::Tree => deps::tree(),

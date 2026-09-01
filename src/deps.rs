@@ -5,6 +5,7 @@
 //! - update: 更新依赖版本
 
 use crate::error::{Error, Result};
+use crate::util::parse_coord;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -230,17 +231,6 @@ pub fn update(coord: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-/// 解析坐标 group:artifact
-fn parse_coord(coord: &str) -> Result<(String, String)> {
-    let parts: Vec<&str> = coord.split(':').collect();
-    if parts.len() < 2 {
-        return Err(Error::new(format!(
-            "无效的坐标格式: {}（应为 group:artifact）",
-            coord
-        )));
-    }
-    Ok((parts[0].to_string(), parts[1].to_string()))
-}
 
 /// 调用 Coursier 获取最新版本
 fn resolve_latest_version(coord: &str) -> Result<String> {

@@ -3,6 +3,7 @@
 //! - versions: 列出某 artifact 的全部可用版本
 
 use crate::error::{Error, Result};
+use crate::util::parse_coord;
 use serde::Deserialize;
 
 /// Maven Central 搜索结果
@@ -83,18 +84,9 @@ pub fn search(keyword: &str, limit: usize) -> Result<()> {
 }
 
 /// 列出某 artifact 的全部可用版本
-#[allow(dead_code)]
 pub fn versions(coord: &str) -> Result<()> {
-    let parts: Vec<&str> = coord.split(':').collect();
-    if parts.len() < 2 {
-        return Err(Error::new(format!(
-            "无效的坐标格式: {}（应为 group:artifact）",
-            coord
-        )));
-    }
+    let (group, artifact) = parse_coord(coord)?;
 
-    let group = parts[0];
-    let artifact = parts[1];
 
     let url = format!(
         "https://search.maven.org/solrsearch/select?q=g:{}+AND+a:{}&core=gav&rows=100&wt=json",

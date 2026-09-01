@@ -1,4 +1,4 @@
-//! JDK 版本管理（mise 模型）
+//! JDK 版本管理（自动下载 + 版本切换）
 //! - install: 下载并解压 Temurin 到 ~/.jex/jdks/<ver>/
 //! - use: 写项目 .jex-version 或全局 ~/.jex/jdk-current
 //! - list: 列出已装版本（✔）与当前版本（→）
@@ -8,8 +8,8 @@
 use crate::config::jex_home;
 use crate::error::{Error, Result};
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
-
 /// 获取 ~/.jex/jdks/ 目录路径
 fn jdks_dir() -> Result<PathBuf> {
     Ok(jex_home()?.join("jdks"))
@@ -27,7 +27,7 @@ fn project_jex_version_path() -> Result<PathBuf> {
 }
 
 /// 读取指定路径的版本号（单行文本）
-fn read_version_file(path: &PathBuf) -> Result<Option<String>> {
+fn read_version_file(path: &Path) -> Result<Option<String>> {
     if !path.exists() {
         return Ok(None);
     }
@@ -36,7 +36,7 @@ fn read_version_file(path: &PathBuf) -> Result<Option<String>> {
 }
 
 /// 写入版本号到文件
-fn write_version_file(path: &PathBuf, version: &str) -> Result<()> {
+fn write_version_file(path: &Path, version: &str) -> Result<()> {
     fs::write(path, format!("{}\n", version))?;
     Ok(())
 }

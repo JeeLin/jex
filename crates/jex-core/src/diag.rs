@@ -90,7 +90,17 @@ fn gc_table_header() -> String {
     )
 }
 
-// ─── Thread 结构化数据 ──────────────────────────────────────────
+/// 从 jstat 输出文本中解析所有 GC 快照
+fn parse_jstat_all(output: &str) -> Vec<GcSnapshot> {
+    output
+        .lines()
+        .filter(|line| {
+            let line = line.trim();
+            !line.is_empty() && !line.starts_with('S') && !line.starts_with('-')
+        })
+        .filter_map(parse_gc_line)
+        .collect()
+}
 
 /// 单线程信息
 #[derive(Debug, Clone)]
@@ -207,7 +217,10 @@ fn parse_threads_output(output: &str) -> ThreadSnapshot {
 
             if let Some(hash_pos) = line.find('#') {
                 let after_hash = &line[hash_pos + 1..];
-                let num_str: String = after_hash.chars().take_while(|c| c.is_ascii_digit()).collect();
+                let num_str: String = after_hash
+                    .chars()
+                    .take_while(|c| c.is_ascii_digit())
+                    .collect();
                 info.id = num_str.parse().unwrap_or(0);
             }
 
@@ -217,11 +230,18 @@ fn parse_threads_output(output: &str) -> ThreadSnapshot {
 
             if let Some(prio_pos) = line.find("prio=") {
                 let after_prio = &line[prio_pos + 5..];
-                let num_str: String = after_prio.chars().take_while(|c| c.is_ascii_digit()).collect();
+                let num_str: String = after_prio
+                    .chars()
+                    .take_while(|c| c.is_ascii_digit())
+                    .collect();
                 info.priority = num_str.parse().unwrap_or(5);
             }
 
-            for state_line in lines.iter().take(std::cmp::min(i + 10, lines.len())).skip(i + 1) {
+            for state_line in lines
+                .iter()
+                .take(std::cmp::min(i + 10, lines.len()))
+                .skip(i + 1)
+            {
                 let state_line = state_line.trim();
                 if let Some(state_pos) = state_line.find("java.lang.Thread.State: ") {
                     let state_str = &state_line[state_pos + 24..];
@@ -275,21 +295,13 @@ pub fn gc(pid: u32) -> Result<()> {
     println!("{}", gc_table_header());
     println!("{}", "-".repeat(78));
 
-    let mut snapshot_count = 0u32;
-    for line in stdout.lines() {
-        if line.trim().is_empty() || line.starts_with('S') || line.starts_with('-') {
-            continue;
-        }
-        if let Some(snapshot) = parse_gc_line(line) {
-            println!("{}", format_gc_snapshot(&snapshot));
-            snapshot_count += 1;
-        }
+    let snapshots = parse_jstat_all(&stdout);
+    for s in &snapshots {
+        println!("{}", format_gc_snapshot(s));
     }
-
-    if snapshot_count == 0 {
+    if snapshots.is_empty() {
         println!("（无数据）");
     }
-
     println!();
     println!("列说明: S0/S1=Survivor, Eden=新生代, Old=老年代, Meta=元空间, CCS=压缩类空间");
     println!("        YGC/YGCT=Young GC 次数/耗时, FGC/FGCT=Full GC 次数/耗时, GCT=总耗时");
@@ -328,16 +340,18 @@ pub fn threads(pid: u32) -> Result<()> {
     println!();
     println!("详细信息:");
 
-    let runnable: Vec<_> = snapshot.threads.iter().filter(|t| t.state == ThreadState::Runnable).collect();
-    let blocked: Vec<_> = snapshot.threads.iter().filter(|t| t.state == ThreadState::Blocked).collect();
-    let waiting: Vec<_> = snapshot.threads.iter().filter(|t| t.state == ThreadState::Waiting || t.state == ThreadState::TimedWaiting).collect();
-    let other: Vec<_> = snapshot.threads.iter().filter(|t| {
-        t.state != ThreadState::Runnable
-            && t.state != ThreadState::Blocked
-            && t.state != ThreadState::Waiting
-            && t.state != ThreadState::TimedWaiting
-    }).collect();
-
+    let mut runnable = Vec::new();
+    let mut blocked = Vec::new();
+    let mut waiting = Vec::new();
+    let mut other = Vec::new();
+    for t in &snapshot.threads {
+        match t.state {
+            ThreadState::Runnable => runnable.push(t),
+            ThreadState::Blocked => blocked.push(t),
+            ThreadState::Waiting | ThreadState::TimedWaiting => waiting.push(t),
+            _ => other.push(t),
+        }
+    }
     if !blocked.is_empty() {
         println!();
         println!("🔴 BLOCKED ({})", blocked.len());
@@ -361,7 +375,14 @@ pub fn threads(pid: u32) -> Result<()> {
         println!("🟡 WAITING ({})", waiting.len());
         for t in &waiting {
             let daemon = if t.daemon { " [daemon]" } else { "" };
-            println!("  {} #{} {} (prio={}){}", t.name, t.id, t.state.label(), t.priority, daemon);
+            println!(
+                "  {} #{} {} (prio={}){}",
+                t.name,
+                t.id,
+                t.state.label(),
+                t.priority,
+                daemon
+            );
         }
     }
 
@@ -370,7 +391,14 @@ pub fn threads(pid: u32) -> Result<()> {
         println!("⚪ OTHER ({})", other.len());
         for t in &other {
             let daemon = if t.daemon { " [daemon]" } else { "" };
-            println!("  {} #{} {} (prio={}){}", t.name, t.id, t.state.label(), t.priority, daemon);
+            println!(
+                "  {} #{} {} (prio={}){}",
+                t.name,
+                t.id,
+                t.state.label(),
+                t.priority,
+                daemon
+            );
         }
     }
 
@@ -382,9 +410,32 @@ pub fn threads(pid: u32) -> Result<()> {
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::execute;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
+
+/// RAII guard：确保 TUI 退出时恢复终端原始状态（即使中途 panic）
+struct TerminalGuard {
+    stdout: io::Stdout,
+}
+
+impl TerminalGuard {
+    fn enter() -> std::io::Result<Self> {
+        enable_raw_mode()?;
+        let mut stdout = io::stdout();
+        execute!(stdout, EnterAlternateScreen)?;
+        Ok(Self { stdout })
+    }
+}
+
+impl Drop for TerminalGuard {
+    fn drop(&mut self) {
+        let _ = disable_raw_mode();
+        let _ = execute!(self.stdout, LeaveAlternateScreen);
+    }
+}
 
 /// 获取终端尺寸 (cols, rows)
 fn terminal_size() -> (u16, u16) {
@@ -413,22 +464,45 @@ fn render_gc_frame(pid: u32, snapshots: &[GcSnapshot], paused: bool) -> io::Resu
 
     // 标题行
     let status = if paused { "已暂停" } else { "刷新中" };
-    writeln!(out, "{}{}╔══ JVM GC 监控 (PID: {}) [{}] ══╗{}",
-        ansi::CYAN, ansi::BOLD, pid, status, ansi::RESET)?;
+    writeln!(
+        out,
+        "{}{}╔══ JVM GC 监控 (PID: {}) [{}] ══╗{}",
+        ansi::CYAN,
+        ansi::BOLD,
+        pid,
+        status,
+        ansi::RESET
+    )?;
     writeln!(out)?;
 
     // 表头
-    writeln!(out, "{}{}{:<8} {:<8} {:<8} {:<8} {:<8} {:>6} {:>8} {:>4} {:>8}{}",
-        ansi::YELLOW, ansi::BOLD,
-        "S0%", "S1%", "Eden%", "Old%", "Meta%", "YGC", "YGCT", "FGC", "FGCT",
-        ansi::RESET)?;
+    writeln!(
+        out,
+        "{}{}{:<8} {:<8} {:<8} {:<8} {:<8} {:<8} {:>6} {:>8} {:>4} {:>8}{}",
+        ansi::YELLOW,
+        ansi::BOLD,
+        "S0%",
+        "S1%",
+        "Eden%",
+        "Old%",
+        "Meta%",
+        "CCS%",
+        "YGC",
+        "YGCT",
+        "FGC",
+        "FGCT",
+        ansi::RESET
+    )?;
 
     // 数据行
     let max_rows = rows.saturating_sub(8) as usize;
     let start = snapshots.len().saturating_sub(max_rows);
     for s in &snapshots[start..] {
-        writeln!(out, "{:<8.2} {:<8.2} {:<8.2} {:<8.2} {:<8.2} {:>6} {:>8.3} {:>4} {:>8.3}",
-            s.s0, s.s1, s.eden, s.old, s.meta, s.ygc, s.ygct, s.fgc, s.fgct)?;
+        writeln!(
+            out,
+            "{:<8.2} {:<8.2} {:<8.2} {:<8.2} {:<8.2} {:>6} {:>8.3} {:>4} {:>8.3}",
+            s.s0, s.s1, s.eden, s.old, s.meta, s.ygc, s.ygct, s.fgc, s.fgct
+        )?;
     }
 
     // 空行填充
@@ -438,16 +512,33 @@ fn render_gc_frame(pid: u32, snapshots: &[GcSnapshot], paused: bool) -> io::Resu
     }
 
     // 状态栏
-    writeln!(out, "{}{}╔══════════════════════════════════════════════════════════════════╗{}",
-        ansi::CYAN, ansi::BOLD, ansi::RESET)?;
-    write!(out, "{}{} q {}{} 退出  {}{} p {}{} 暂停/继续  采样数: {}",
-        ansi::CYAN, ansi::BOLD,
-        ansi::WHITE_ON_RED, ansi::RESET,
-        ansi::CYAN, ansi::BOLD,
-        ansi::WHITE_ON_BLUE, ansi::RESET,
-        snapshots.len())?;
-    writeln!(out, "{}{}╚══════════════════════════════════════════════════════════════════╝{}",
-        ansi::CYAN, ansi::BOLD, ansi::RESET)?;
+    writeln!(
+        out,
+        "{}{}╔══════════════════════════════════════════════════════════════════╗{}",
+        ansi::CYAN,
+        ansi::BOLD,
+        ansi::RESET
+    )?;
+    write!(
+        out,
+        "{}{} q {}{} 退出  {}{} p {}{} 暂停/继续  采样数: {}",
+        ansi::CYAN,
+        ansi::BOLD,
+        ansi::WHITE_ON_RED,
+        ansi::RESET,
+        ansi::CYAN,
+        ansi::BOLD,
+        ansi::WHITE_ON_BLUE,
+        ansi::RESET,
+        snapshots.len()
+    )?;
+    writeln!(
+        out,
+        "{}{}╚══════════════════════════════════════════════════════════════════╝{}",
+        ansi::CYAN,
+        ansi::BOLD,
+        ansi::RESET
+    )?;
     out.flush()?;
     Ok(())
 }
@@ -458,9 +549,8 @@ pub fn gc_tui(pid: u32) -> Result<()> {
         return gc(pid);
     }
 
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    let _guard =
+        TerminalGuard::enter().map_err(|e| Error::new(format!("TUI 初始化失败: {e:?}")))?;
 
     let mut snapshots: Vec<GcSnapshot> = Vec::new();
     let mut paused = false;
@@ -476,14 +566,7 @@ pub fn gc_tui(pid: u32) -> Result<()> {
             {
                 if output.status.success() {
                     let stdout_str = String::from_utf8_lossy(&output.stdout);
-                    for line in stdout_str.lines() {
-                        if line.trim().is_empty() || line.starts_with('S') || line.starts_with('-') {
-                            continue;
-                        }
-                        if let Some(snapshot) = parse_gc_line(line) {
-                            snapshots.push(snapshot);
-                        }
-                    }
+                    snapshots.extend(parse_jstat_all(&stdout_str));
                 }
             }
             last_refresh = Instant::now();
@@ -508,8 +591,6 @@ pub fn gc_tui(pid: u32) -> Result<()> {
         }
     }
 
-    disable_raw_mode()?;
-    execute!(stdout, LeaveAlternateScreen)?;
     Ok(())
 }
 
@@ -520,16 +601,31 @@ fn render_threads_frame(pid: u32, snapshot: &Option<ThreadSnapshot>) -> io::Resu
     write!(out, "\x1b[2J\x1b[H")?;
 
     let total = snapshot.as_ref().map_or(0, |s| s.total);
-    writeln!(out, "{}{}╔══ JVM 线程信息 (PID: {}) — 共 {} 个线程 ══╗{}",
-        ansi::CYAN, ansi::BOLD, pid, total, ansi::RESET)?;
+    writeln!(
+        out,
+        "{}{}╔══ JVM 线程信息 (PID: {}) — 共 {} 个线程 ══╗{}",
+        ansi::CYAN,
+        ansi::BOLD,
+        pid,
+        total,
+        ansi::RESET
+    )?;
     writeln!(out)?;
 
     if let Some(snap) = snapshot {
         // 表头
-        writeln!(out, "{}{}{:<4} {:<30} {:<8} {:<6} {:<6}{}",
-            ansi::YELLOW, ansi::BOLD,
-            "状态", "线程名", "ID", "守护", "优先级",
-            ansi::RESET)?;
+        writeln!(
+            out,
+            "{}{}{:<4} {:<30} {:<8} {:<6} {:<6}{}",
+            ansi::YELLOW,
+            ansi::BOLD,
+            "状态",
+            "线程名",
+            "ID",
+            "守护",
+            "优先级",
+            ansi::RESET
+        )?;
 
         // 数据行
         let max_rows = rows.saturating_sub(8) as usize;
@@ -543,10 +639,18 @@ fn render_threads_frame(pid: u32, snapshot: &Option<ThreadSnapshot>) -> io::Resu
                 _ => ansi::GRAY,
             };
             let daemon = if t.daemon { "✔" } else { "" };
-            writeln!(out, "{}{}{} {:<30} {:<8} {:<6} {:<6}{}",
-                state_color, t.state.symbol(), ansi::RESET,
-                t.name, format!("#{}", t.id), daemon, t.priority,
-                ansi::RESET)?;
+            writeln!(
+                out,
+                "{}{}{} {:<30} {:<8} {:<6} {:<6}{}",
+                state_color,
+                t.state.symbol(),
+                ansi::RESET,
+                t.name,
+                format!("#{}", t.id),
+                daemon,
+                t.priority,
+                ansi::RESET
+            )?;
         }
 
         // 空行填充
@@ -565,14 +669,32 @@ fn render_threads_frame(pid: u32, snapshot: &Option<ThreadSnapshot>) -> io::Resu
         } else {
             String::new()
         };
-        writeln!(out, "{}{}╔══════════════════════════════════════════════════════════════════╗{}",
-            ansi::CYAN, ansi::BOLD, ansi::RESET)?;
-        write!(out, "{}{} q {}{} 退出  守护线程: {}{}{}{}",
-            ansi::CYAN, ansi::BOLD,
-            ansi::WHITE_ON_RED, ansi::RESET,
-            snap.daemon_count, blocked, deadlock, ansi::RESET)?;
-        writeln!(out, "{}{}╚══════════════════════════════════════════════════════════════════╝{}",
-            ansi::CYAN, ansi::BOLD, ansi::RESET)?;
+        writeln!(
+            out,
+            "{}{}╔══════════════════════════════════════════════════════════════════╗{}",
+            ansi::CYAN,
+            ansi::BOLD,
+            ansi::RESET
+        )?;
+        write!(
+            out,
+            "{}{} q {}{} 退出  守护线程: {}{}{}{}",
+            ansi::CYAN,
+            ansi::BOLD,
+            ansi::WHITE_ON_RED,
+            ansi::RESET,
+            snap.daemon_count,
+            blocked,
+            deadlock,
+            ansi::RESET
+        )?;
+        writeln!(
+            out,
+            "{}{}╚══════════════════════════════════════════════════════════════════╝{}",
+            ansi::CYAN,
+            ansi::BOLD,
+            ansi::RESET
+        )?;
     }
     out.flush()?;
     Ok(())
@@ -584,9 +706,8 @@ pub fn threads_tui(pid: u32) -> Result<()> {
         return threads(pid);
     }
 
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    let _guard =
+        TerminalGuard::enter().map_err(|e| Error::new(format!("TUI 初始化失败: {e:?}")))?;
 
     let mut snapshot: Option<ThreadSnapshot> = None;
     let mut should_quit = false;
@@ -622,8 +743,6 @@ pub fn threads_tui(pid: u32) -> Result<()> {
         }
     }
 
-    disable_raw_mode()?;
-    execute!(stdout, LeaveAlternateScreen)?;
     Ok(())
 }
 
@@ -648,7 +767,8 @@ mod tests {
 
     #[test]
     fn test_parse_gc_line_with_pid() {
-        let line = "12345   0.00  45.23  67.89  12.34  95.67  92.10   125   1.234    3   0.567  1.801";
+        let line =
+            "12345   0.00  45.23  67.89  12.34  95.67  92.10   125   1.234    3   0.567  1.801";
         let snapshot = parse_gc_line(line);
         assert!(snapshot.is_some());
         let s = snapshot.unwrap();
@@ -666,8 +786,14 @@ mod tests {
         assert_eq!(ThreadState::from_jcmd("RUNNABLE"), ThreadState::Runnable);
         assert_eq!(ThreadState::from_jcmd("BLOCKED"), ThreadState::Blocked);
         assert_eq!(ThreadState::from_jcmd("WAITING"), ThreadState::Waiting);
-        assert_eq!(ThreadState::from_jcmd("TIMED_WAITING"), ThreadState::TimedWaiting);
-        assert!(matches!(ThreadState::from_jcmd("UNKNOWN"), ThreadState::Unknown(_)));
+        assert_eq!(
+            ThreadState::from_jcmd("TIMED_WAITING"),
+            ThreadState::TimedWaiting
+        );
+        assert!(matches!(
+            ThreadState::from_jcmd("UNKNOWN"),
+            ThreadState::Unknown(_)
+        ));
     }
 
     #[test]
@@ -698,7 +824,10 @@ Found one Java-level deadlock:
   held by thread 1
 "#;
         let snapshot = parse_threads_output(output);
-        assert!(snapshot.deadlock_detected, "deadlock_detected should be true");
+        assert!(
+            snapshot.deadlock_detected,
+            "deadlock_detected should be true"
+        );
         assert_eq!(snapshot.deadlock_threads.len(), 2);
         assert!(snapshot.deadlock_threads.contains(&"main".to_string()));
         assert!(snapshot.deadlock_threads.contains(&"t2".to_string()));

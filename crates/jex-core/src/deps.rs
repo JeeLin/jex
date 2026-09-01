@@ -4,6 +4,7 @@
 //! - remove: 从 jex.toml 删除依赖，重算锁文件
 //! - update: 更新依赖版本
 
+use crate::config::ensure_cs;
 use crate::error::{Error, Result};
 use crate::util::parse_coord;
 use std::collections::HashMap;
@@ -233,7 +234,8 @@ pub fn update(coord: Option<&str>) -> Result<()> {
 
 /// 调用 Coursier 获取最新版本
 fn resolve_latest_version(coord: &str) -> Result<String> {
-    let output = std::process::Command::new("cs")
+    let cs = ensure_cs()?;
+    let output = std::process::Command::new(&cs)
         .args(["complete", coord])
         .output()?;
 
@@ -313,8 +315,7 @@ pub fn why(coord: &str) -> Result<()> {
 
 /// 依赖冲突分析（简化实现）
 pub fn conflict() -> Result<()> {
-    let lock = read_jex_lock()?;
-    let _dependencies = lock.dependencies.unwrap_or_default();
+    let _lock = read_jex_lock()?;
 
     println!("依赖冲突分析:");
     println!("  当前无冲突（简化实现）");

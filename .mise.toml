@@ -1,0 +1,30 @@
+[env]
+# 阿里云 crates.io 镜像（sparse 协议，速度快、不限速、不占磁盘）
+CARGO_REGISTRIES_CRATES_IO_PROTOCOL = "sparse"
+CARGO_REGISTRIES_CRATES_IO = "https://rsproxy.cn/index/"
+
+# rustup 反向代理
+RUSTUP_DIST_SERVER = "https://rsproxy.cn"
+RUSTUP_UPDATE_ROOT = "https://rsproxy.cn/rustup"
+
+# crates.io 替换源
+__CARGO_TEST_DISABLE_RUST_VERSION_CHECK = "1"
+
+[tools]
+rust = "1.98.0"
+node = "22"
+
+[tasks.lint]
+run = "cargo clippy -- -D warnings"
+
+[tasks.test]
+run = "cargo test"
+
+[tasks.check]
+run = "cargo check"
+
+[tasks.fmt]
+run = "cargo fmt"
+
+[tasks.ci]
+run = ["cargo check", "cargo clippy -- -D warnings", "cargo test"]

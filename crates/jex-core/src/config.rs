@@ -4,6 +4,7 @@
 //! - cs CLI 自动下载
 
 use crate::error::{Error, Result};
+use crate::util::{cs_arch_str, cs_os_str};
 use std::path::PathBuf;
 
 /// 返回 ~/.jex 全局目录路径。
@@ -63,29 +64,10 @@ pub fn ensure_cs() -> Result<PathBuf> {
 }
 
 /// 根据当前 OS 和 ARCH 构造 cs 下载 URL。
+/// F11 修复：通过 `cs_os_str()` / `cs_arch_str()` 复用 util.rs 中的 OS/ARCH 映射。
 fn cs_download_url() -> Result<String> {
-    let os = match std::env::consts::OS {
-        "linux" => "linux",
-        "macos" => "macos",
-        _ => {
-            return Err(Error::new(format!(
-                "不支持的操作系统: {}",
-                std::env::consts::OS
-            )))
-        }
-    };
-
-    let arch = match std::env::consts::ARCH {
-        "x86_64" => "amd64",
-        "aarch64" => "arm64",
-        _ => {
-            return Err(Error::new(format!(
-                "不支持的架构: {}",
-                std::env::consts::ARCH
-            )))
-        }
-    };
-
+    let os = cs_os_str()?;
+    let arch = cs_arch_str()?;
     Ok(format!(
         "https://github.com/coursier/coursier/releases/latest/download/cs-{}-{}",
         os, arch

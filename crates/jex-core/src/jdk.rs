@@ -7,6 +7,7 @@
 
 use crate::config::jex_home;
 use crate::error::{Error, Result};
+use crate::util::{adoptium_arch_str, adoptium_os_str};
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
@@ -109,29 +110,8 @@ pub fn install(version: &str) -> Result<()> {
     println!("正在从 Adoptium 下载 JDK {}...", version);
 
     // 构建下载 URL
-    let os = match std::env::consts::OS {
-        "linux" => "linux",
-        "macos" => "mac",
-        "windows" => "windows",
-        _ => {
-            return Err(Error::new(format!(
-                "不支持的操作系统: {}",
-                std::env::consts::OS
-            )))
-        }
-    };
-
-    let arch = match std::env::consts::ARCH {
-        "x86_64" => "x64",
-        "aarch64" => "aarch64",
-        _ => {
-            return Err(Error::new(format!(
-                "不支持的架构: {}",
-                std::env::consts::ARCH
-            )))
-        }
-    };
-
+    let os = adoptium_os_str()?;
+    let arch = adoptium_arch_str()?;
     let url = format!(
         "https://api.adoptium.net/v3/binary/latest/{}/ga/{}/{}/jdk/hotspot/normal/eclipse",
         version, os, arch

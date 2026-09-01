@@ -3,6 +3,7 @@
 
 use crate::deps::{read_jex_lock, read_jex_toml};
 use crate::error::Result;
+use crate::util::parse_coord;
 use std::fs;
 use std::path::PathBuf;
 
@@ -37,10 +38,7 @@ pub fn maven() -> Result<()> {
     pom.push_str("    <dependencies>\n");
 
     for (coord, ver) in &dependencies {
-        let parts: Vec<&str> = coord.split(':').collect();
-        if parts.len() >= 2 {
-            let dep_group = parts[0];
-            let dep_artifact = parts[1];
+        if let Ok((dep_group, dep_artifact)) = parse_coord(coord) {
             pom.push_str("        <dependency>\n");
             pom.push_str(&format!("            <groupId>{}</groupId>\n", dep_group));
             pom.push_str(&format!(

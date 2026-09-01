@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-07-02
+
+### Added
+- 原生依赖解析核心模块：crates/jex-core/src/resolver.rs，通过 Maven Central search API + POM 解析实现 resolve_latest / resolve_dependencies / DepNode / format_tree
+- reqwest + quick-xml 依赖：替换 cs CLI shell 调用，全部 HTTP 解析在 Rust 进程内完成
+- jex_m2_cache：~/.jex/m2/ 本地 jar 仓库目录
+- 依赖树深度限制（MAX_DEPTH=8）+ visited HashSet 去重，避免递归爆炸
+- 单元测试：resolver::tests::test_resolve_latest_gson（真实网络）+ test_format_tree
+
+### Changed
+- deps.rs：resolve_latest_version 委托给 resolver::resolve_latest，删除 cs complete 调用
+- run.rs：build_classpath 改用 resolver::resolve_dependencies + jex_m2_cache 路径生成
+- deps.rs tree()：从简化输出升级为递归依赖树（含传递依赖）
+- HTTP 客户端自定义 User-Agent（"jex/0.4.0 (Rust)"），绕过 Maven Central 默认 403
+
+### Removed
+- config.rs：删除 ensure_cs() / cs_path() / cs_download_url()，v0.4.0 不再依赖 cs CLI
+- util.rs：删除 v0.3.0 引入但已无引用的 cs_os_str / cs_arch_str
+
 ## [0.3.0] - 2025-07-01
 
 ### Added

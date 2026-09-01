@@ -25,7 +25,7 @@
 - [x] 2.0 Workspace 多 crate 拆分（jex-core + jex-cli）✅ v0.3.0
 - [x] 2.1 依赖解析内嵌 ✅ v0.4.0
 - [x] 2.2 诊断结构化 ✅ v0.3.0（jstat/jcmd 结构化解析 + crossterm TUI）
-- [ ] 2.3 火焰图捆绑
+- [ ] 2.3 火焰图捆绑 ← 下一步
 - [ ] 2.4 JFR 自解析
 - [ ] 2.5 诊断增强
 
@@ -53,7 +53,7 @@ Phase 0 (地基) → Phase 1 (整合)
 ## 架构决策
 
 1. **工具本体用 Rust**：免 JDK，避免鸡生蛋问题
-2. **依赖解析用 Coursier**：不重造，直接调用
+2. **依赖解析用 Rust 原生 HTTP + XML 解析**：Maven Central search API + POM 解析，v0.4.0 起完全摆脱 cs CLI
 3. **诊断用 JDK 自带工具**：jstat/jcmd/jfr + async-profiler，只做美化
 4. **导出 Maven 有损**：降低退出成本，非双向同步
 
@@ -69,9 +69,9 @@ Phase 0 (地基) → Phase 1 (整合)
 - **子任务**：4 个
 - **版本类型**：minor
 
-### v0.4.0 依赖解析内嵌 ← 新增（下一步）
-- **核心功能**：将 `deps.rs` / `search.rs` / `run.rs` 中所有 `Command::new("cs")` 替换为 Rust 原生依赖解析（基于 coursier-rs 或自建轻量解析），消除 cs CLI 依赖
-- **子任务预估**：4–6 个（依赖解析库选型与接入、deps.rs 迁移、search.rs 迁移、run.rs classpath 构建迁移、e2e 测试、CI 验证）
-- **依赖**：v0.3.0（需要 workspace 拆分完成后的 jex-core crate）
+### v0.4.0 依赖解析内嵌 ✅
+- **核心功能**：resolver.rs 原生依赖解析（search API + POM 解析 + 深度限制 + 去重）、deps.rs/run.rs 迁移、jex tree 完整依赖树可视化、cs CLI 完全移除
+- **子任务**：5 个
+- **依赖**：v0.3.0
 - **版本类型**：minor
 - **版本号**：v0.4.0

@@ -1,6 +1,7 @@
 //! 一键运行（解析 → 编译 → 运行 + 缓存）
 //! - run: 自动解析依赖 → 拼 classpath → javac → java
 
+use crate::config::ensure_cs;
 use crate::deps;
 use crate::error::{Error, Result};
 use crate::jdk;
@@ -19,9 +20,11 @@ fn build_classpath(lock: &deps::LockFile) -> Result<String> {
     let dependencies = lock.dependencies.clone().unwrap_or_default();
     let mut jars: Vec<String> = Vec::new();
 
+    let cs = ensure_cs()?;
+
     for coord in dependencies.keys() {
         // 逐坐标调用 cs fetch -p 获取 classpath
-        let output = std::process::Command::new("cs")
+        let output = std::process::Command::new(&cs)
             .args(["fetch", "-p", coord])
             .output()?;
 

@@ -253,8 +253,10 @@ fn resolve_latest_version(coord: &str) -> Result<String> {
         return Err(Error::new(format!("未找到依赖: {}", coord)));
     }
 
-    // 返回最后一个版本（通常是最新版）
-    Ok(versions.last().unwrap().to_string())
+    // `cs complete` 按语义版本号升序输出，取最后一个即为最新版本。
+    Ok(versions.last()
+        .expect("上方已检查 versions 非空")
+        .to_string())
 }
 
 /// 更新锁文件（简化实现：只记录直接依赖）

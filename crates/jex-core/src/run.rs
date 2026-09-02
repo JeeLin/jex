@@ -151,3 +151,56 @@ pub fn run(file: &str, args: &[String]) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::deps::LockFile;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_build_dir() {
+        let dir = build_dir().unwrap();
+        assert!(dir.to_string_lossy().contains(".jex-build"));
+        assert!(dir.is_absolute());
+    }
+
+    #[test]
+    fn test_run_file_not_found() {
+        let result = run("/nonexistent/file.java", &[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("文件不存在"));
+    }
+
+    #[test]
+    fn test_build_classpath_empty_lock() {
+        let lock = LockFile {
+            lockfile_version: Some(1),
+            dependencies: Some(HashMap::new()),
+        };
+        let result = build_classpath(&lock);
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_build_classpath_with_deps() {
+        let lock = LockFile {
+            lockfile_version: Some(1),
+            dependencies: Some({
+                let mut deps = HashMap::new();
+                deps.insert(
+                    "com.google.code.gson:gson".to_string(),
+                    "2.11.0".to_string(),
+                );
+                deps
+            }),
+        };
+        // 即使 resolver 可能失败，也应该返回一个 classpath（退化为预期路径）
+        let result = build_classpath(&lock);
+        assert!(result.is_ok());
+        let cp = result.unwrap();
+        assert!(cp.contains("gson"));
+    }
+}

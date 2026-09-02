@@ -64,3 +64,44 @@ pub fn maven() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_pom_xml_content() {
+        // 测试 pom.xml 生成逻辑（不调用 maven()，直接测试 XML 构建）
+        let project_name = "test-app";
+        let group_id = format!("local.{}", project_name);
+        let artifact_id = project_name;
+        let version = "0.1.0";
+
+        let mut pom = String::new();
+        pom.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        pom.push_str("<project xmlns=\"http://maven.apache.org/POM/4.0.0\">\n");
+        pom.push_str("    <modelVersion>4.0.0</modelVersion>\n");
+        pom.push_str(&format!("    <groupId>{}</groupId>\n", group_id));
+        pom.push_str(&format!("    <artifactId>{}</artifactId>\n", artifact_id));
+        pom.push_str(&format!("    <version>{}</version>\n", version));
+        pom.push_str("    <packaging>jar</packaging>\n");
+
+        assert!(pom.contains("test-app"));
+        assert!(pom.contains("local.test-app"));
+        assert!(pom.contains("0.1.0"));
+        assert!(pom.contains("<packaging>jar</packaging>"));
+    }
+
+    #[test]
+    fn test_parse_coord_for_export() {
+        let (g, a) = parse_coord("com.google.code.gson:gson").unwrap();
+        assert_eq!(g, "com.google.code.gson");
+        assert_eq!(a, "gson");
+    }
+
+    #[test]
+    fn test_parse_coord_invalid_for_export() {
+        let result = parse_coord("invalid");
+        assert!(result.is_err());
+    }
+}

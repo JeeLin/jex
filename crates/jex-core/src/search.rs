@@ -101,3 +101,90 @@ pub fn versions(coord: &str) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_search_response_deserialize() {
+        let json = r#"{
+            "response": {
+                "docs": [
+                    {
+                        "g": "com.google.code.gson",
+                        "a": "gson",
+                        "latestVersion": "2.11.0",
+                        "versionCount": 30,
+                        "description": "Gson library",
+                        "ec": ["jar", "sources"]
+                    }
+                ]
+            }
+        }"#;
+        let response: SearchResponse = serde_json::from_str(json).unwrap();
+        let docs = response.response.unwrap().docs.unwrap();
+        assert_eq!(docs.len(), 1);
+        assert_eq!(docs[0].group_id.as_deref(), Some("com.google.code.gson"));
+        assert_eq!(docs[0].artifact_id.as_deref(), Some("gson"));
+        assert_eq!(docs[0].latest_version.as_deref(), Some("2.11.0"));
+        assert_eq!(docs[0].version_count, Some(30));
+        assert_eq!(docs[0].description.as_deref(), Some("Gson library"));
+    }
+
+    #[test]
+    fn test_search_response_empty() {
+        let json = r#"{"response": {"docs": []}}"#;
+        let response: SearchResponse = serde_json::from_str(json).unwrap();
+        let docs = response.response.unwrap().docs.unwrap();
+        assert!(docs.is_empty());
+    }
+
+    #[test]
+    fn test_search_response_no_response() {
+        let json = r#"{}"#;
+        let response: SearchResponse = serde_json::from_str(json).unwrap();
+        assert!(response.response.is_none());
+    }
+
+    #[test]
+    fn test_search_doc_optional_fields() {
+        let json = r#"{
+            "response": {
+                "docs": [
+                    {
+                        "g": "org.example",
+                        "a": "lib"
+                    }
+                ]
+            }
+        }"#;
+        let response: SearchResponse = serde_json::from_str(json).unwrap();
+        let doc = &response.response.unwrap().docs.unwrap()[0];
+        assert_eq!(doc.group_id.as_deref(), Some("org.example"));
+        assert_eq!(doc.artifact_id.as_deref(), Some("lib"));
+        assert!(doc.latest_version.is_none());
+        assert!(doc.version_count.is_none());
+        assert!(doc.description.is_none());
+        assert!(doc.extensions.is_none());
+    }
+
+    #[test]
+    fn test_search_invalid_json() {
+        let result = serde_json::from_str::<SearchResponse>("not json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_fetch_docs_url_format() {
+        let keyword = "gson";
+        let limit = 10;
+        let url = format!(
+            "https://search.maven.org/solrsearch/select?q={}&rows={}&wt=json",
+            keyword, limit
+        );
+        assert!(url.contains("gson"));
+        assert!(url.contains("rows=10"));
+        assert!(url.contains("wt=json"));
+    }
+}

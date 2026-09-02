@@ -17,3 +17,33 @@ pub fn jex_m2_cache() -> Result<PathBuf> {
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_jex_home() {
+        let home = jex_home().unwrap();
+        assert!(home.to_string_lossy().contains(".jex"));
+        // 确保是绝对路径
+        assert!(home.is_absolute());
+    }
+
+    #[test]
+    fn test_jex_m2_cache() {
+        let cache = jex_m2_cache().unwrap();
+        assert!(cache.to_string_lossy().contains("m2"));
+        assert!(cache.to_string_lossy().contains(".jex"));
+        // 确保目录已创建
+        assert!(cache.exists());
+    }
+
+    #[test]
+    fn test_jex_m2_cache_idempotent() {
+        // 多次调用应该成功（幂等）
+        let cache1 = jex_m2_cache().unwrap();
+        let cache2 = jex_m2_cache().unwrap();
+        assert_eq!(cache1, cache2);
+    }
+}

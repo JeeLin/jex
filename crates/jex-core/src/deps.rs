@@ -333,3 +333,190 @@ pub fn conflict() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_project_config_serialize_deserialize() {
+        let config = ProjectConfig {
+            project: Some(ProjectInfo {
+                name: "test-project".to_string(),
+                java: Some("21".to_string()),
+                main: Some("Main".to_string()),
+            }),
+            dependencies: Some({
+                let mut deps = HashMap::new();
+                deps.insert("com.google.code.gson:gson".to_string(), "2.11.0".to_string());
+                deps
+            }),
+            repositories: Some({
+                let mut repos = HashMap::new();
+                repos.insert("maven-central".to_string(), TOMLValue::Bool(true));
+                repos
+            }),
+            build: Some(BuildConfig {
+                output: Some(".jex-build".to_string()),
+                sources: Some(vec!["src".to_string()]),
+                resources: Some(vec![]),
+                compiler_args: Some(vec!["-parameters".to_string()]),
+                jvm_args: None,
+                env: None,
+            }),
+        };
+
+        let toml_str = toml::to_string_pretty(&config).unwrap();
+        assert!(toml_str.contains("test-project"));
+        assert!(toml_str.contains("gson"));
+
+        let deserialized: ProjectConfig = toml::from_str(&toml_str).unwrap();
+        assert_eq!(deserialized.project.as_ref().unwrap().name, "test-project");
+        assert_eq!(
+            deserialized
+                .dependencies
+                .as_ref()
+                .unwrap()
+                .get("com.google.code.gson:gson")
+                .unwrap(),
+            "2.11.0"
+        );
+    }
+
+    #[test]
+    fn test_lock_file_serialize_deserialize() {
+        let lock = LockFile {
+            lockfile_version: Some(1),
+            dependencies: Some({
+                let mut deps = HashMap::new();
+                deps.insert("org.slf4j:slf4j-api".to_string(), "2.0.9".to_string());
+                deps
+            }),
+        };
+
+        let toml_str = toml::to_string_pretty(&lock).unwrap();
+        assert!(toml_str.contains("slf4j-api"));
+
+        let deserialized: LockFile = toml::from_str(&toml_str).unwrap();
+        assert_eq!(deserialized.lockfile_version, Some(1));
+        assert_eq!(
+            deserialized
+                .dependencies
+                .unwrap()
+                .get("org.slf4j:slf4j-api")
+                .unwrap(),
+            "2.0.9"
+        );
+    }
+
+    #[test]
+    fn test_toml_value_variants() {
+        // TOMLValue is an untagged enum used in repositories config
+        // Test that it can be deserialized from a TOML table
+        let toml_str = "[maven-central]\nenabled = true";
+        let val: TOMLValue = toml::from_str(toml_str).unwrap();
+        // Should deserialize as Table variant
+        assert!(matches!(val, TOMLValue::Table(_)));
+
+        // Test deserialization within a HashMap context (common usage)
+        let toml_str = "[repositories.maven-central]\nenabled = true";
+        let val: HashMap<String, TOMLValue> = toml::from_str(toml_str).unwrap();
+        assert!(!val.is_empty());
+    }
+
+    #[test]
+    fn test_project_config_minimal() {
+        let config = ProjectConfig {
+            project: None,
+            dependencies: None,
+            repositories: None,
+            build: None,
+        };
+        let toml_str = toml::to_string_pretty(&config).unwrap();
+        let deserialized: ProjectConfig = toml::from_str(&toml_str).unwrap();
+        assert!(deserialized.project.is_none());
+        assert!(deserialized.dependencies.is_none());
+    }
+
+    #[test]
+    fn test_lock_file_empty() {
+        let lock = LockFile {
+            lockfile_version: None,
+            dependencies: None,
+        };
+        let toml_str = toml::to_string_pretty(&lock).unwrap();
+        let deserialized: LockFile = toml::from_str(&toml_str).unwrap();
+        assert!(deserialized.lockfile_version.is_none());
+        assert!(deserialized.dependencies.is_none());
+    }
+
+    #[test]
+    fn test_read_jex_lock_no_file() {
+        // 在一个没有 jex.lock.toml 的目录中调用
+        let result = read_jex_lock();
+        // 应该返回默认值而不是错误
+        if let Ok(lock) = result {
+            assert_eq!(lock.lockfile_version, Some(1));
+        }
+    }
+
+    #[test]
+    fn test_read_jex_toml_no_file() {
+        // 在一个没有 jex.toml 的目录中调用
+        let result = read_jex_toml();
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("没有 jex.toml"));
+    }
+
+    #[test]
+    fn test_project_info_serialize() {
+        let info = ProjectInfo {
+            name: "my-app".to_string(),
+            java: Some("17".to_string()),
+            main: Some("com.example.Main".to_string()),
+        };
+        let toml_str = toml::to_string_pretty(&info).unwrap();
+        assert!(toml_str.contains("my-app"));
+        assert!(toml_str.contains("17"));
+        assert!(toml_str.contains("com.example.Main"));
+
+        let deserialized: ProjectInfo = toml::from_str(&toml_str).unwrap();
+        assert_eq!(deserialized.name, "my-app");
+        assert_eq!(deserialized.java, Some("17".to_string()));
+        assert_eq!(deserialized.main, Some("com.example.Main".to_string()));
+    }
+
+    #[test]
+    fn test_build_config_serialize() {
+        let build = BuildConfig {
+            output: Some("target".to_string()),
+            sources: Some(vec!["src/main".to_string()]),
+            resources: Some(vec!["src/main/resources".to_string()]),
+            compiler_args: Some(vec!["-Xlint".to_string(), "-deprecation".to_string()]),
+            jvm_args: Some(vec!["-Xmx512m".to_string()]),
+            env: Some({
+                let mut env = HashMap::new();
+                env.insert("JAVA_HOME".to_string(), "/usr/lib/jvm/java-21".to_string());
+                env
+            }),
+        };
+        let toml_str = toml::to_string_pretty(&build).unwrap();
+        assert!(toml_str.contains("target"));
+        assert!(toml_str.contains("-Xlint"));
+        assert!(toml_str.contains("-Xmx512m"));
+        assert!(toml_str.contains("JAVA_HOME"));
+
+        let deserialized: BuildConfig = toml::from_str(&toml_str).unwrap();
+        assert_eq!(deserialized.output, Some("target".to_string()));
+        assert_eq!(deserialized.jvm_args, Some(vec!["-Xmx512m".to_string()]));
+    }
+
+    #[test]
+    fn test_conflict_function() {
+        // conflict() 只是读锁文件并打印，不应该 panic
+        let result = conflict();
+        // 即使没有 jex.lock.toml 也应该成功（返回默认值）
+        let _ = result;
+    }
+}

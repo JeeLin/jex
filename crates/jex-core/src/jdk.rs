@@ -288,3 +288,97 @@ pub fn doctor() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn test_jdks_dir() {
+        let dir = jdks_dir().unwrap();
+        assert!(dir.to_string_lossy().contains("jdks"));
+        assert!(dir.to_string_lossy().contains(".jex"));
+    }
+
+    #[test]
+    fn test_global_jdk_current_path() {
+        let path = global_jdk_current_path().unwrap();
+        assert!(path.to_string_lossy().contains("jdk-current"));
+    }
+
+    #[test]
+    fn test_project_jex_version_path() {
+        let path = project_jex_version_path().unwrap();
+        assert!(path.to_string_lossy().contains(".jex-version"));
+    }
+
+    #[test]
+    fn test_read_version_file_not_exists() {
+        let path = PathBuf::from("/tmp/nonexistent-version-file");
+        let result = read_version_file(&path).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_read_version_file_exists() {
+        let dir = std::env::temp_dir().join("jex-test-read-version");
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("version.txt");
+        let mut f = fs::File::create(&path).unwrap();
+        writeln!(f, "21\n").unwrap();
+
+        let result = read_version_file(&path).unwrap();
+        assert_eq!(result, Some("21".to_string()));
+
+        let _ = fs::remove_file(&path);
+        let _ = fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn test_write_version_file() {
+        let dir = std::env::temp_dir().join("jex-test-write-version");
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("version.txt");
+
+        write_version_file(&path, "17").unwrap();
+        let content = fs::read_to_string(&path).unwrap();
+        assert_eq!(content.trim(), "17");
+
+        let _ = fs::remove_file(&path);
+        let _ = fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn test_current_version_no_files() {
+        // 在没有 .jex-version 的目录中调用
+        let result = current_version();
+        // 应该成功，可能返回 Some（全局）或 None
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_adoptium_os_str_jdk() {
+        let os = adoptium_os_str().unwrap();
+        assert!(os == "linux" || os == "mac" || os == "windows");
+    }
+
+    #[test]
+    fn test_adoptium_arch_str_jdk() {
+        let arch = adoptium_arch_str().unwrap();
+        assert!(arch == "x64" || arch == "aarch64");
+    }
+
+    #[test]
+    fn test_list_installed_empty() {
+        let result = list_installed();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_doctor_no_jdk() {
+        // 在没有 JDK 的环境中，doctor 不应该 panic
+        let result = doctor();
+        let _ = result;
+    }
+}

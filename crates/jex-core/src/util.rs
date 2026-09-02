@@ -40,3 +40,61 @@ pub fn adoptium_arch_str() -> Result<&'static str> {
         ))),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_coord_valid() {
+        let (g, a) = parse_coord("com.google.code.gson:gson").unwrap();
+        assert_eq!(g, "com.google.code.gson");
+        assert_eq!(a, "gson");
+    }
+
+    #[test]
+    fn test_parse_coord_simple() {
+        let (g, a) = parse_coord("org.slf4j:slf4j-api").unwrap();
+        assert_eq!(g, "org.slf4j");
+        assert_eq!(a, "slf4j-api");
+    }
+
+    #[test]
+    fn test_parse_coord_no_colon() {
+        let result = parse_coord("invalid-coord");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("无效的坐标格式"));
+    }
+
+    #[test]
+    fn test_parse_coord_empty() {
+        let result = parse_coord("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_coord_only_colon() {
+        // ":" splits to ["", ""] which has 2 elements, so it's valid
+        let (g, a) = parse_coord(":").unwrap();
+        assert_eq!(g, "");
+        assert_eq!(a, "");
+    }
+
+    #[test]
+    fn test_adoptium_os_str() {
+        let result = adoptium_os_str();
+        assert!(result.is_ok());
+        // 在 Linux CI 中
+        let os = result.unwrap();
+        assert!(os == "linux" || os == "mac" || os == "windows");
+    }
+
+    #[test]
+    fn test_adoptium_arch_str() {
+        let result = adoptium_arch_str();
+        assert!(result.is_ok());
+        let arch = result.unwrap();
+        assert!(arch == "x64" || arch == "aarch64");
+    }
+}

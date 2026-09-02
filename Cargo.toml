@@ -1,3 +1,14 @@
 [workspace]
 members = ["crates/jex-core", "crates/jex-cli"]
 resolver = "2"
+
+[workspace.dependencies]
+toml = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+crossterm = "0.28"
+atty = "0.2"
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"] }
+quick-xml = "0.37"
+clap = { version = "4", features = ["derive"] }
+jex-core = { path = "crates/jex-core" }

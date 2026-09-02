@@ -10,5 +10,5 @@ name = "jex"
 path = "src/main.rs"
 
 [dependencies]
-jex-core = { path = "../jex-core" }
-clap = { version = "4", features = ["derive"] }
+jex-core.workspace = true
+clap.workspace = true

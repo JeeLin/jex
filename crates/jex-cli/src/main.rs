@@ -1,7 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 use jex_core::error::Result;
-use jex_core::{deps, diag, export, jdk, run, search};
-
+use jex_core::{deps, diag, export, jdk, profiler, run, search};
 #[derive(Parser)]
 #[command(
     name = "jex",
@@ -162,7 +161,14 @@ struct UseArgs {
 
 #[derive(Args)]
 struct FlameArgs {
+    /// 进程 ID
     pid: u32,
+    /// 采样时长（秒）
+    #[arg(short, long, default_value_t = 10)]
+    duration: u32,
+    /// 输出 SVG 路径
+    #[arg(short, long)]
+    output: Option<String>,
 }
 
 #[derive(Args)]
@@ -228,7 +234,22 @@ fn run(cli: Cli) -> Result<()> {
             JavaCommand::Gc(a) => diag::gc_tui(a.pid),
             JavaCommand::Threads(a) => diag::threads_tui(a.pid),
             JavaCommand::Heap => planned("2.x", "java heap"),
-            JavaCommand::Flame(a) => planned("2.3", &format!("java flame {}", a.pid)),
+            JavaCommand::Flame(a) => {
+                let flame = profiler::profile(a.pid, a.duration)?;
+                // 如果指定了输出路径，复制 SVG
+                if let Some(ref path) = a.output {
+                    let dest = std::path::PathBuf::from(path);
+                    if let Some(parent) = dest.parent() {
+                        std::fs::create_dir_all(parent)?;
+                    }
+                    std::fs::copy(&flame.svg_path, &dest)
+                        .map_err(|e| jex_core::error::Error::new(format!("复制 SVG 到 {path} 失败: {e}")))?;
+                    println!("📊 火焰图已复制到: {path}");
+                }
+                // 尝试打开浏览器
+                let _ = profiler::open_in_browser(&flame.svg_path);
+                Ok(())
+            }
             JavaCommand::Rec(a) => planned("2.4", &format!("java rec {}", a.pid)),
             JavaCommand::Top => planned("2.x", "java top"),
         },

@@ -236,7 +236,6 @@ fn run(cli: Cli) -> Result<()> {
             JavaCommand::Heap => planned("2.x", "java heap"),
             JavaCommand::Flame(a) => {
                 let flame = profiler::profile(a.pid, a.duration)?;
-                // 如果指定了输出路径，复制 SVG
                 if let Some(ref path) = a.output {
                     let dest = std::path::PathBuf::from(path);
                     if let Some(parent) = dest.parent() {
@@ -245,9 +244,9 @@ fn run(cli: Cli) -> Result<()> {
                     std::fs::copy(&flame.svg_path, &dest)
                         .map_err(|e| jex_core::error::Error::new(format!("复制 SVG 到 {path} 失败: {e}")))?;
                     println!("📊 火焰图已复制到: {path}");
+                } else {
+                    println!("📊 火焰图已生成: {}", flame.svg_path.display());
                 }
-                // 尝试打开浏览器
-                let _ = profiler::open_in_browser(&flame.svg_path);
                 Ok(())
             }
             JavaCommand::Rec(a) => planned("2.4", &format!("java rec {}", a.pid)),

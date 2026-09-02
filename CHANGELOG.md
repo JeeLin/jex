@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-07-02
+
+### Added
+- async-profiler 自动下载与捆绑：`jex java flame <pid>` 命令
+- 平台检测（Linux/macOS x86_64/aarch64）支持
+- 火焰图生成（SVG 格式，含 collapsed 中间文件、纯 Rust fallback 生成器）
+- 浏览器自动打开（macOS `open` / Linux `xdg-open`）
+- `--duration` 采样时长参数（默认 10 秒）
+- `--output` SVG 输出路径参数
+- 跨模块单元测试覆盖（error/config/deps/export/jdk/run/search/util 共 63 个新测试）
+
+### Changed
+- Cargo 依赖收敛到 workspace 根：通过 `[workspace.dependencies]` 统一管理版本号
+- CI 触发条件：恢复 push/PR to master + tags 触发
+- 质量门禁：新增 `cargo llvm-cov` 覆盖率检查
 ## [0.4.0] - 2025-07-02
 
 ### Added

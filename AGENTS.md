@@ -56,6 +56,7 @@
 | 编译检查 | `cargo check` | 无 error |
 | Lint 检查 | `cargo clippy -- -D warnings` | 无 error（warning 可忽略） |
 | 测试 | `cargo test` | 全部通过 |
+| 测试覆盖率 | `cargo llvm-cov` | 达到 100% |
 
 ## 审查维度
 

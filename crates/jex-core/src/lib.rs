@@ -9,3 +9,4 @@ pub mod run;
 pub mod search;
 pub mod util;
 pub mod profiler;
+pub mod jfr;

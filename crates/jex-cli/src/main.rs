@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 use jex_core::error::Result;
-use jex_core::{deps, diag, export, jdk, profiler, run, search};
+use jex_core::{deps, diag, export, jdk, jfr, profiler, run, search};
 #[derive(Parser)]
 #[command(
     name = "jex",
@@ -101,6 +101,8 @@ enum JavaCommand {
     Flame(FlameArgs),
     /// 录制 Flight Recorder
     Rec(RecArgs),
+    /// 分析 .jfr 文件
+    Analyze(AnalyzeArgs),
     /// 实时面板
     Top,
 }
@@ -185,7 +187,26 @@ struct ThreadsArgs {
 
 #[derive(Args)]
 struct RecArgs {
+    /// JVM 进程 PID
     pid: u32,
+    /// 录制时长（秒），不指定则交互式录制
+    #[arg(short, long)]
+    duration: Option<u32>,
+    /// 输出 .jfr 文件路径
+    #[arg(short, long)]
+    output: Option<String>,
+}
+
+#[derive(Args)]
+struct AnalyzeArgs {
+    /// .jfr 文件路径
+    file: String,
+    /// 按事件类型过滤
+    #[arg(short, long)]
+    r#type: Option<String>,
+    /// 展示 top N 热点
+    #[arg(short, long, default_value = "10")]
+    top: usize,
 }
 
 fn main() {
@@ -249,7 +270,37 @@ fn run(cli: Cli) -> Result<()> {
                 }
                 Ok(())
             }
-            JavaCommand::Rec(a) => planned("2.4", &format!("java rec {}", a.pid)),
+            JavaCommand::Rec(a) => {
+                let output_path = a.output.as_ref().map(std::path::PathBuf::from);
+                let session = jfr::start_recording(a.pid, a.duration)?;
+                let jfr_path = if a.duration.is_some() {
+                    jfr::dump_recording(session)?
+                } else {
+                    // 交互式：等待用户 Ctrl+C
+                    println!("\n按 Enter 停止录制并生成报告...");
+                    let mut input = String::new();
+                    std::io::stdin().read_line(&mut input).ok();
+                    jfr::dump_recording(session)?
+                };
+                // 如果指定了输出路径，复制
+                if let Some(ref dest) = output_path {
+                    std::fs::copy(&jfr_path, dest)
+                        .map_err(|e| jex_core::error::Error::new(format!("复制 JFR 文件失败: {e}")))?;
+                    println!("📄 JFR 文件已复制到: {}", dest.display());
+                }
+                // 解析并展示
+                let (header, events) = jfr::parse_jfr(&jfr_path)?;
+                let summary = jfr::summarize(&events, &header);
+                jfr::display_summary(&summary);
+                Ok(())
+            }
+            JavaCommand::Analyze(a) => {
+                let path = std::path::PathBuf::from(&a.file);
+                let (header, events) = jfr::parse_jfr(&path)?;
+                let summary = jfr::summarize(&events, &header);
+                jfr::display_summary(&summary);
+                Ok(())
+            }
             JavaCommand::Top => planned("2.x", "java top"),
         },
     }

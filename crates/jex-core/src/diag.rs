@@ -1041,6 +1041,7 @@ pub fn top_tui(pid: u32) -> Result<()> {
 }
 
 
+#[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
     use super::*;
@@ -1135,5 +1136,67 @@ Found one Java-level deadlock:
         assert_eq!(ThreadState::Waiting.symbol(), "🟡");
         assert_eq!(ThreadState::TimedWaiting.symbol(), "🟡");
         assert_eq!(ThreadState::Sleeping.symbol(), "🔵");
+    }
+
+    #[test]
+    fn test_heap_overview_parse() {
+        // jstat -gc header + data line (17 columns)
+        let header = "S0C    S1C    S0U    S1U      EC       EU        OC         OU       MC     MU    CCS   CCSC   YGC     YGCT    FGC    FGCT      GCT";
+        let data = "  10240.0 10240.0     0.0  5120.0  81920.0  40960.0  204800.0  102400.0  524288.0 262144.0 524288.0 262144.0   125    1.234     3    0.567   1.801";
+        let full = format!("{}\n{}\n", header, data);
+        let result = parse_jstat_gc(&full);
+        assert!(result.is_some(), "should parse jstat -gc output");
+        let h = result.unwrap();
+        // heap_used = survivor + eden + old = (0+5120) + 40960 + 102400 = 148480 KB
+        assert_eq!(h.heap_used, 148480);
+        // heap_max = s0c+s1c+ec+oc = 10240+10240+81920+204800 = 307200 KB
+        assert_eq!(h.heap_max, 307200);
+        assert_eq!(h.eden_used, 40960);
+        assert_eq!(h.survivor_used, 5120);
+        assert_eq!(h.old_gen_used, 102400);
+        assert_eq!(h.meta_used, 262144);
+        assert_eq!(h.gc_count, 128); // 125 YGC + 3 FGC
+        assert!((h.gc_pause_ms - 1801.0).abs() < 0.1); // (1.234+0.567)*1000
+    }
+
+    #[test]
+    fn test_heap_overview_parse_empty() {
+        let result = parse_jstat_gc("");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_heap_overview_parse_header_only() {
+        let output = "S0C    S1C    S0U    S1U      EC       EU        OC         OU";
+        let result = parse_jstat_gc(output);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_display_heap_parse_roundtrip() {
+        let header = "S0C    S1C    S0U    S1U      EC       EU        OC         OU       MC     MU    CCS   CCSC   YGC     YGCT    FGC    FGCT      GCT";
+        let data = "  20480.0 20480.0 10240.0 10240.0 163840.0 81920.0  409600.0  204800.0  524288.0 262144.0 524288.0 262144.0   500   10.000    10    2.000  12.000";
+        let full = format!("{}\n{}\n", header, data);
+        let h = parse_jstat_gc(&full).unwrap();
+        assert_eq!(h.heap_used, 10240 + 10240 + 81920 + 204800);
+        assert_eq!(h.heap_max, 20480 + 20480 + 163840 + 409600);
+        assert_eq!(h.gc_count, 510); // 500 + 10
+        assert!((h.gc_pause_ms - 12000.0).abs() < 0.1); // (10+2)*1000
+    }
+
+    #[test]
+    fn test_top_snapshot_struct_fields() {
+        let snap = TopSnapshot {
+            heap_used_pct: 75.5,
+            gc_count: 42,
+            gc_pause_ms: 3.15,
+            thread_count: 25,
+            daemon_count: 18,
+        };
+        assert!((snap.heap_used_pct - 75.5).abs() < 0.001);
+        assert_eq!(snap.gc_count, 42);
+        assert!((snap.gc_pause_ms - 3.15).abs() < 0.001);
+        assert_eq!(snap.thread_count, 25);
+        assert_eq!(snap.daemon_count, 18);
     }
 }

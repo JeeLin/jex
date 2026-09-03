@@ -14,6 +14,7 @@
 | 依赖管理 | `jex add/remove/update` | uv 式体验，底层 Coursier |
 | 依赖搜索 | `jex search` | apk 式搜索 Maven Central |
 | 一键运行 | `jex run` | 解析 → 编译 → 运行 |
+| 脚本模式 | `jex run script.java` | 直接运行单文件 Java 脚本（shebang + 文件内依赖声明 + 缓存编译） |
 | JDK 诊断 | `jex java gc/threads/...` | 取代难用的原生工具 |
 | 生态互通 | `jex export/import maven` | 降低退出成本 |
 
@@ -50,6 +51,26 @@ jex conflict                # 冲突分析
 jex export maven            # 生成 pom.xml
 ```
 
+### 6. 脚本模式
+```java
+///usr/bin/env jex
+//DEPS com.google.code.gson:gson:2.11.0
+//JAVA 21
+
+import com.google.gson.Gson;
+import java.util.Map;
+
+public class hello {
+    public static void main(String[] args) {
+        Map<String, String> data = Map.of("key", "value");
+        System.out.println(new Gson().toJson(data));
+    }
+}
+```
+```bash
+jex run hello.java          # 自动检测 shebang，走脚本模式
+jex run src/Main.java       # 非脚本文件，走原有编译流程
+```
 ## 功能边界
 
 ### 做什么

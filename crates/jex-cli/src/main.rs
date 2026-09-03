@@ -276,7 +276,24 @@ fn run(cli: Cli) -> Result<()> {
                 search::search(&a.query, a.limit)
             }
         }
-        Commands::Run(a) => run::run(&a.file, &a.args),
+        Commands::Run(a) => {
+            use jex_core::script::parse_script;
+            use std::path::Path;
+            let path = Path::new(&a.file);
+            if path.exists() {
+                if let Ok(meta) = parse_script(path) {
+                    if meta.is_script {
+                        // Script mode: use cache compilation
+                        let class_dir = run::get_or_compile(path, &meta)?;
+                        println!("脚本模式：{}", a.file);
+                        println!("缓存目录：{}", class_dir.display());
+                        return Ok(());
+                    }
+                }
+            }
+            // Fallback to original run
+            run::run(&a.file, &a.args)
+        },
         Commands::Build => planned("1.4", "build"),
         Commands::Tree => deps::tree(),
         Commands::Why(a) => deps::why(&a.coord),

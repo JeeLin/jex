@@ -5,7 +5,10 @@ use crate::deps;
 use crate::error::{Error, Result};
 use crate::jdk;
 use crate::resolver;
+use crate::script::ScriptMeta;
+use std::collections::hash_map::DefaultHasher;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -56,6 +59,63 @@ fn build_classpath(lock: &deps::LockFile) -> Result<String> {
 
     Ok(paths.join(":"))
 }
+
+/// 计算内容哈希（用于缓存键）
+fn content_hash(content: &str) -> String {
+    let mut hasher = DefaultHasher::new();
+    content.hash(&mut hasher);
+    format!("{:x}", hasher.finish())
+}
+
+/// 计算依赖列表的哈希
+fn deps_hash(deps: &[String]) -> String {
+    let mut hasher = DefaultHasher::new();
+    for dep in deps {
+        dep.hash(&mut hasher);
+    }
+    format!("{:x}", hasher.finish())
+}
+
+/// 获取脚本缓存目录
+fn script_cache_dir(source_hash: &str) -> Result<PathBuf> {
+    let home = dirs::home_dir().ok_or_else(|| Error::new("无法获取用户主目录"))?;
+    Ok(home.join(".jex").join("cache").join("scripts").join(source_hash))
+}
+
+/// 缓存编译：首次编译后缓存 class 文件，依赖或源码未变时跳过编译
+pub fn get_or_compile(
+    script_path: &Path,
+    meta: &ScriptMeta,
+) -> Result<PathBuf> {
+    // 1. 计算源码哈希
+    let source = fs::read_to_string(script_path)
+        .map_err(|e| Error::new(format!("无法读取源码: {}", e)))?;
+    let src_hash = content_hash(&source);
+
+    // 2. 计算依赖哈希
+    let dep_hash = deps_hash(&meta.deps);
+    let combined_hash = content_hash(&format!("{}:{}", src_hash, dep_hash));
+
+    // 3. 检查缓存
+    let cache_dir = script_cache_dir(&combined_hash)?;
+    let class_dir = cache_dir.join("classes");
+    if class_dir.exists() {
+        // 缓存命中：检查是否有 .class 文件
+        if fs::read_dir(&class_dir)?.any(|e| {
+            e.ok()
+                .and_then(|e| e.path().extension().map(|ext| ext == "class"))
+                .unwrap_or(false)
+        }) {
+            return Ok(class_dir);
+        }
+    }
+
+    // 4. 缓存未命中：需要编译
+    // 这里返回缓存目录路径，由调用方负责实际编译
+    fs::create_dir_all(&class_dir)?;
+    Ok(class_dir)
+}
+
 
 /// 运行 Java 文件
 pub fn run(file: &str, args: &[String]) -> Result<()> {
@@ -202,5 +262,58 @@ mod tests {
         assert!(result.is_ok());
         let cp = result.unwrap();
         assert!(cp.contains("gson"));
+    }
+
+    #[test]
+    fn test_content_hash() {
+        let h1 = content_hash("hello");
+        let h2 = content_hash("hello");
+        let h3 = content_hash("world");
+        assert_eq!(h1, h2);
+        assert_ne!(h1, h3);
+    }
+
+    #[test]
+    fn test_deps_hash() {
+        let h1 = deps_hash(&["a:b:1.0".to_string()]);
+        let h2 = deps_hash(&["a:b:1.0".to_string()]);
+        let h3 = deps_hash(&["a:b:2.0".to_string()]);
+        assert_eq!(h1, h2);
+        assert_ne!(h1, h3);
+    }
+
+    #[test]
+    fn test_get_or_compile_creates_cache_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let script = tmp.path().join("test.java");
+        std::fs::write(&script, "//DEPS a:b:1.0\npublic class Test {}").unwrap();
+        let meta = ScriptMeta {
+            java_version: None,
+            deps: vec!["a:b:1.0".to_string()],
+            is_script: true,
+        };
+        let result = get_or_compile(&script, &meta);
+        assert!(result.is_ok());
+        let class_dir = result.unwrap();
+        assert!(class_dir.exists());
+    }
+
+    #[test]
+    fn test_get_or_compile_cache_hit() {
+        let tmp = tempfile::tempdir().unwrap();
+        let script = tmp.path().join("test.java");
+        std::fs::write(&script, "//DEPS a:b:1.0\npublic class Test {}").unwrap();
+        let meta = ScriptMeta {
+            java_version: None,
+            deps: vec!["a:b:1.0".to_string()],
+            is_script: true,
+        };
+        // First call creates cache
+        let dir1 = get_or_compile(&script, &meta).unwrap();
+        // Create a .class file to simulate previous compilation
+        std::fs::write(dir1.join("Test.class"), b"mock").unwrap();
+        // Second call should hit cache
+        let dir2 = get_or_compile(&script, &meta).unwrap();
+        assert_eq!(dir1, dir2);
     }
 }

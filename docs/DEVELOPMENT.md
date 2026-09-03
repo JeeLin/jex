@@ -27,7 +27,7 @@
 - [x] 2.2 诊断结构化 ✅ v0.3.0（jstat/jcmd 结构化解析 + crossterm TUI）
 - [x] 2.3 火焰图捆绑 ✅ v0.5.0
 - [x] 2.4 JFR 自解析 ✅ v0.6.0
-- [ ] 2.5 诊断增强 ← 下一步
+- [x] 2.5 诊断增强 ✅ v0.7.0
 
 ### Phase 3 — 扩展/远期
 脚本模式、REPL、热重载、fmt、monorepo、IDE 集成、self update 等。

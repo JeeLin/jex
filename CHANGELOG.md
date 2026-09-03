@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-07-02
+
+### Added
+- 堆概览：`jex java heap <pid>` 展示 JVM 堆内存使用情况（区域分布 + GC 统计）
+- Top 实时面板：`jex java top <pid>` 持续刷新展示 CPU/堆/GC/线程指标
+- 增强线程分析：线程状态分布、死锁检测
 ## [0.6.0] - 2025-07-02
 
 ### Added

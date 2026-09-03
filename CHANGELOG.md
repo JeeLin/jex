@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-07-02
+
+### Added
+- JFR 录制：`jex java rec <pid>` 启动/停止 JFR 录制（支持定时录制 + 交互式）
+- JFR 解析：纯 Rust 解析 .jfr 二进制文件（含 LZ4 压缩 chunk）
+- JFR 展示：终端摘要表格（GC/IO/线程阻塞/内存分配事件统计）
+- JFR 分析：`jex java analyze <file.jfr>` 离线分析 .jfr 文件
+
+### Fixed
+- Clippy clean：手写范围模式改为 `160..=162`，测试中 vec! 改为数组
 ## [0.5.0] - 2025-07-02
 
 ### Added

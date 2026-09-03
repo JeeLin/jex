@@ -18,6 +18,37 @@ pub fn jex_m2_cache() -> Result<PathBuf> {
     Ok(dir)
 }
 
+/// 从 jex.toml 读取格式化配置
+pub fn read_fmt_config() -> Result<crate::fmt::FmtConfig> {
+    use crate::fmt::{FmtConfig, Style};
+    let content = std::fs::read_to_string("jex.toml")
+        .map_err(|_| Error::new("无法读取 jex.toml".to_string()))?;
+    let value: toml::Value = content
+        .parse()
+        .map_err(|e| Error::new(format!("解析 jex.toml 失败: {e}")))?;
+    let mut config = FmtConfig::default();
+    if let Some(fmt_section) = value.get("fmt") {
+        if let Some(style_str) = fmt_section.get("style").and_then(|v| v.as_str()) {
+            if let Ok(style) = style_str.parse::<Style>() {
+                config.style = style;
+            }
+        }
+        if let Some(aosp) = fmt_section.get("aosp").and_then(|v| v.as_bool()) {
+            config.aosp = aosp;
+        }
+        if let Some(skip_future) = fmt_section.get("skip_future").and_then(|v| v.as_bool()) {
+            config.skip_future = skip_future;
+        }
+        if let Some(exclude) = fmt_section.get("exclude").and_then(|v| v.as_array()) {
+            config.exclude = exclude
+                .iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect();
+        }
+    }
+    Ok(config)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -45,5 +76,12 @@ mod tests {
         let cache1 = jex_m2_cache().unwrap();
         let cache2 = jex_m2_cache().unwrap();
         assert_eq!(cache1, cache2);
+    }
+
+    #[test]
+    fn test_read_fmt_config_no_file() {
+        // 在没有 jex.toml 的目录调用应返回 Err
+        let result = read_fmt_config();
+        assert!(result.is_err());
     }
 }

@@ -1,6 +1,8 @@
 use clap::{Args, Parser, Subcommand};
 use jex_core::error::Result;
-use jex_core::{deps, diag, export, jdk, jfr, profiler, run, search};
+use jex_core::{deps, diag, export, fmt, jdk, jfr, profiler, run, search};
+use std::path::PathBuf;
+
 #[derive(Parser)]
 #[command(
     name = "jex",
@@ -70,6 +72,10 @@ enum Commands {
     /// 从 pom.xml 导入
     #[command(alias = "i")]
     Import,
+
+    /// 代码格式化(google-java-format)
+    #[command(alias = "f")]
+    Fmt(FmtArgs),
 
     /// JVM 诊断(gc / threads / heap / 火焰图 / 录制)
     #[command(subcommand)]
@@ -186,6 +192,22 @@ struct ThreadsArgs {
 }
 
 #[derive(Args)]
+struct FmtArgs {
+    /// 要格式化的文件或目录(默认当前目录)
+    #[arg(default_value = ".")]
+    paths: Vec<PathBuf>,
+    /// 检查模式(不修改文件，只报告)
+    #[arg(long)]
+    check: bool,
+    /// 输出格式化后的代码到 stdout
+    #[arg(long)]
+    stdout: bool,
+    /// 增量模式(只格式化 git diff 变更的文件)
+    #[arg(long)]
+    changed: bool,
+}
+
+#[derive(Args)]
 struct RecArgs {
     /// JVM 进程 PID
     pid: u32,
@@ -251,6 +273,82 @@ fn run(cli: Cli) -> Result<()> {
         Commands::Analyze => planned("2.x", "analyze"),
         Commands::Export => export::maven(),
         Commands::Import => planned("2.x", "import pom"),
+        Commands::Fmt(a) => {
+            let mut config = fmt::FmtConfig::default();
+            if let Ok(toml_config) = jex_core::config::read_fmt_config() {
+                config = toml_config;
+            }
+            if a.changed {
+                let files = fmt::format_changed(&config)?;
+                if files.is_empty() {
+                    println!("没有需要格式化的变更文件");
+                    return Ok(());
+                }
+                for file in &files {
+                    match fmt::format_file(file, &config) {
+                        Ok(formatted) => {
+                            if a.stdout {
+                                println!("--- {file:?} ---");
+                                println!("{formatted}");
+                            } else if a.check {
+                                println!("would format: {file:?}");
+                            } else {
+                                std::fs::write(file, formatted.as_bytes())?;
+                                println!("formatted: {file:?}");
+                            }
+                        }
+                        Err(e) => eprintln!("格式化 {file:?} 失败: {e}"),
+                    }
+                }
+            } else {
+                for path_str in &a.paths {
+                    let path = std::path::Path::new(path_str);
+                    if path.is_file() {
+                        match fmt::format_file(path, &config) {
+                            Ok(formatted) => {
+                                if a.stdout {
+                                    println!("{formatted}");
+                                } else if a.check {
+                                    println!("would format: {path:?}");
+                                } else {
+                                    std::fs::write(path, formatted.as_bytes())?;
+                                    println!("formatted: {path:?}");
+                                }
+                            }
+                            Err(e) => eprintln!("格式化 {path:?} 失败: {e}"),
+                        }
+                    } else if path.is_dir() {
+                        for entry in std::fs::read_dir(path)? {
+                            let entry = entry?;
+                            let entry_path = entry.path();
+                            if entry_path.is_file()
+                                && entry_path.to_string_lossy().ends_with(".java")
+                            {
+                                match fmt::format_file(&entry_path, &config) {
+                                    Ok(formatted) => {
+                                        if a.stdout {
+                                            println!("--- {:?} ---", entry_path);
+                                            println!("{formatted}");
+                                        } else if a.check {
+                                            println!("would format: {:?}", entry_path);
+                                        } else {
+                                            std::fs::write(&entry_path, formatted.as_bytes())?;
+                                            println!("formatted: {:?}", entry_path);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        eprintln!("格式化 {:?} 失败: {e}", entry_path)
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        eprintln!("路径不存在或不是文件/目录: {path:?}");
+                    }
+                }
+            }
+            Ok(())
+        }
         Commands::Java(c) => match c {
             JavaCommand::Gc(a) => diag::gc_tui(a.pid),
             JavaCommand::Threads(a) => diag::threads_tui(a.pid),
@@ -262,8 +360,9 @@ fn run(cli: Cli) -> Result<()> {
                     if let Some(parent) = dest.parent() {
                         std::fs::create_dir_all(parent)?;
                     }
-                    std::fs::copy(&flame.svg_path, &dest)
-                        .map_err(|e| jex_core::error::Error::new(format!("复制 SVG 到 {path} 失败: {e}")))?;
+                    std::fs::copy(&flame.svg_path, &dest).map_err(|e| {
+                        jex_core::error::Error::new(format!("复制 SVG 到 {path} 失败: {e}"))
+                    })?;
                     println!("📊 火焰图已复制到: {path}");
                 } else {
                     println!("📊 火焰图已生成: {}", flame.svg_path.display());
@@ -276,19 +375,17 @@ fn run(cli: Cli) -> Result<()> {
                 let jfr_path = if a.duration.is_some() {
                     jfr::dump_recording(session)?
                 } else {
-                    // 交互式：等待用户 Ctrl+C
                     println!("\n按 Enter 停止录制并生成报告...");
                     let mut input = String::new();
                     std::io::stdin().read_line(&mut input).ok();
                     jfr::dump_recording(session)?
                 };
-                // 如果指定了输出路径，复制
                 if let Some(ref dest) = output_path {
-                    std::fs::copy(&jfr_path, dest)
-                        .map_err(|e| jex_core::error::Error::new(format!("复制 JFR 文件失败: {e}")))?;
+                    std::fs::copy(&jfr_path, dest).map_err(|e| {
+                        jex_core::error::Error::new(format!("复制 JFR 文件失败: {e}"))
+                    })?;
                     println!("📄 JFR 文件已复制到: {}", dest.display());
                 }
-                // 解析并展示
                 let (header, events) = jfr::parse_jfr(&jfr_path)?;
                 let summary = jfr::summarize(&events, &header);
                 jfr::display_summary(&summary);

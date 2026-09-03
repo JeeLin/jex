@@ -1,6 +1,6 @@
 [package]
 name = "jex-core"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 description = "jex core library - JVM toolchain logic"
 license = "MIT"
@@ -13,3 +13,4 @@ crossterm.workspace = true
 atty.workspace = true
 reqwest.workspace = true
 quick-xml.workspace = true
+dirs.workspace = true

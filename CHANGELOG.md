@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-03
+
+### Added
+- 代码格式化：`jex fmt` 命令，支持 google-java-format 规范
+- 格式化引擎：Style 枚举（Google/Aosp/OpenJ7）、FmtConfig 配置、format_file/format_code/format_and_output
+- CLI 集成：`jex fmt <paths>` 支持文件/目录批量格式化，`--check` 检查模式，`--stdout` 输出到标准输出
+- 配置支持：从 jex.toml `[fmt]` section 读取格式化配置（style/aosp/skip_future/exclude）
+- 增量格式化：`--changed` 模式只格式化 git diff 变更的 .java 文件
+
+
 ## [0.7.0] - 2025-07-02
 
 ### Added

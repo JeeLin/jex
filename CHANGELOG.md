@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-03
+
+### Added
+- 脚本模式：`jex run script.java` 支持 shebang 检测，直接运行单文件 Java 脚本
+- 脚本解析引擎：支持 `#!/usr/bin/env jex` 和 `///usr/bin/env jex` shebang 格式
+- 文件内依赖声明：支持 `//DEPS group:artifact:version` 注解（兼容 jbang 格式）
+- 文件内 Java 版本声明：支持 `//JAVA 21` 注解（可选）
+- 缓存编译：基于内容哈希的缓存机制，依赖或源码未变时跳过编译
+- 集成测试：6 个端到端测试用例覆盖脚本解析和缓存逻辑
+
 ## [0.8.0] - 2026-09-03
 
 ### Added

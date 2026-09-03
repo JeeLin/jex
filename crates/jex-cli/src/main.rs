@@ -96,7 +96,7 @@ enum JavaCommand {
     /// 线程概览
     Threads(ThreadsArgs),
     /// 堆概览
-    Heap,
+    Heap(GcArgs),
     /// 火焰图(async-profiler)
     Flame(FlameArgs),
     /// 录制 Flight Recorder
@@ -104,7 +104,7 @@ enum JavaCommand {
     /// 分析 .jfr 文件
     Analyze(AnalyzeArgs),
     /// 实时面板
-    Top,
+    Top(GcArgs),
 }
 
 #[derive(Args)]
@@ -254,7 +254,7 @@ fn run(cli: Cli) -> Result<()> {
         Commands::Java(c) => match c {
             JavaCommand::Gc(a) => diag::gc_tui(a.pid),
             JavaCommand::Threads(a) => diag::threads_tui(a.pid),
-            JavaCommand::Heap => planned("2.x", "java heap"),
+            JavaCommand::Heap(a) => diag::display_heap(a.pid),
             JavaCommand::Flame(a) => {
                 let flame = profiler::profile(a.pid, a.duration)?;
                 if let Some(ref path) = a.output {
@@ -301,7 +301,7 @@ fn run(cli: Cli) -> Result<()> {
                 jfr::display_summary(&summary);
                 Ok(())
             }
-            JavaCommand::Top => planned("2.x", "java top"),
+            JavaCommand::Top(a) => diag::top_tui(a.pid),
         },
     }
 }

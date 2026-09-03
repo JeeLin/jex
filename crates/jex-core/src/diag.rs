@@ -745,9 +745,304 @@ pub fn threads_tui(pid: u32) -> Result<()> {
 
     Ok(())
 }
+// ─── Heap 概览 ───────────────────────────────────────────────
 
-#[cfg(test)]
+/// 堆内存概览（jstat -gc 解析结果）
+#[derive(Debug, Clone)]
+pub struct HeapOverview {
+    pub heap_used: u64,
+    pub heap_max: u64,
+    pub eden_used: u64,
+    pub survivor_used: u64,
+    pub old_gen_used: u64,
+    pub meta_used: u64,
+    pub gc_count: u64,
+    pub gc_pause_ms: f64,
+}
+
+/// 解析 jstat -gc 输出的容量/利用率列，返回 HeapOverview
+///
+/// jstat -gc 输出格式（KB）：
+/// ```text
+/// S0C    S1C  S0U    S1U     EC      EU       OC       OU      MC     MU
+/// 10240 10240 0.0  5120.0 81920  40960.0  204800  102400.0 524288 262144.0 ...
+/// ```
+fn parse_jstat_gc(output: &str) -> Option<HeapOverview> {
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty()
+            || trimmed.starts_with("S0C")
+            || trimmed.starts_with("-"  )
+        {
+            continue;
+        }
+
+        let parts: Vec<&str> = trimmed.split_whitespace().collect();
+        if parts.len() < 12 {
+            continue;
+        }
+
+        let parse_kb = |s: &str| -> f64 {
+            if s == "-" {
+                0.0
+            } else {
+                s.parse::<f64>().unwrap_or(0.0)
+            }
+        };
+
+        // 容量列（KB）：S0C, S1C, EC, OC, MC
+        let s0c = parse_kb(parts[0]);
+        let s1c = parse_kb(parts[1]);
+        let ec  = parse_kb(parts[4]);
+        let oc  = parse_kb(parts[6]);
+        let _mc  = parse_kb(parts[8]);
+
+        // 利用率列（KB）：S0U, S1U, EU, OU, MU
+        let s0u = parse_kb(parts[2]);
+        let s1u = parse_kb(parts[3]);
+        let eu  = parse_kb(parts[5]);
+        let ou  = parse_kb(parts[7]);
+        let mu  = parse_kb(parts[9]);
+
+        let parse_u64 = |s: &str| -> u64 {
+            if s == "-" {
+                0
+            } else {
+                s.parse::<u64>().unwrap_or(0)
+            }
+        };
+
+        // jstat -gc header: S0C S1C S0U S1U EC EU OC OU MC MU CCS CCSC YGC YGCT FGC FGCT GCT
+        let ygc  = parse_u64(parts[12]);
+        let ygct = parse_kb(parts[13]);
+        let fgc  = parse_u64(parts[14]);
+        let fgct = parse_kb(parts[15]);
+
+        let survivor_used = (s0u + s1u) as u64;
+        let old_gen_used  = ou as u64;
+        let eden_used     = eu as u64;
+        let meta_used     = mu as u64;
+        let heap_used     = survivor_used + eden_used + old_gen_used;
+        let heap_max      = ((s0c + s1c + ec + oc) as u64).max(1);
+        let gc_count      = ygc + fgc;
+        let gc_pause_ms   = (ygct + fgct) * 1000.0;
+
+        return Some(HeapOverview {
+            heap_used,
+            heap_max,
+            eden_used,
+            survivor_used,
+            old_gen_used,
+            meta_used,
+            gc_count,
+            gc_pause_ms,
+        });
+    }
+    None
+}
+
+/// 获取堆内存概览：运行 jstat -gc 并解析输出
+pub fn heap_overview(pid: u32) -> Result<HeapOverview> {
+    let output = Command::new("jstat")
+        .args(["-gc", &pid.to_string()])
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(Error::new(format!("jstat -gc 执行失败: {}", stderr)));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    parse_jstat_gc(&stdout)
+        .ok_or_else(|| Error::new("无法解析 jstat -gc 输出".to_string()))
+}
+
+/// 格式化显示堆概览
+pub fn display_heap(pid: u32) -> Result<()> {
+    let overview = heap_overview(pid)?;
+
+    println!("JVM 堆概览 (PID: {})", pid);
+    println!();
+
+    // 堆使用进度条
+    let used_pct = if overview.heap_max > 0 {
+        overview.heap_used as f64 / overview.heap_max as f64 * 100.0
+    } else {
+        0.0
+    };
+    let bar_len = 40;
+    let filled = ((used_pct / 100.0) * bar_len as f64) as usize;
+    let bar: String = "=".repeat(filled) + &"-".repeat((bar_len as usize).saturating_sub(filled));
+    let color = if used_pct > 80.0 {
+        ansi::RED
+    } else if used_pct > 60.0 {
+        ansi::YELLOW
+    } else {
+        ansi::GREEN
+    };
+    println!(
+        "  堆使用: {}[{}]{} {:.1}%  ({:.1} MB / {:.1} MB)",
+        color, bar, ansi::RESET, used_pct,
+        overview.heap_used as f64 / 1024.0,
+        overview.heap_max as f64 / 1024.0
+    );
+    println!();
+    println!("  Eden:    {:.1} MB", overview.eden_used as f64 / 1024.0);
+    println!("  Survivor:{:.1} MB", overview.survivor_used as f64 / 1024.0);
+    println!("  Old Gen: {:.1} MB", overview.old_gen_used as f64 / 1024.0);
+    println!("  Meta:    {:.1} MB", overview.meta_used as f64 / 1024.0);
+    println!();
+    println!("  GC 次数: {}  累计暂停: {:.1} ms", overview.gc_count, overview.gc_pause_ms);
+    println!();
+
+    Ok(())
+}
+
+// ─── Top 快照 / TUI ───────────────────────────────────────────
+
+/// Top 实时快照汇总
+#[derive(Debug, Clone)]
+pub struct TopSnapshot {
+    pub heap_used_pct: f64,
+    pub gc_count: u64,
+    pub gc_pause_ms: f64,
+    pub thread_count: usize,
+    pub daemon_count: usize,
+}
+
+/// 获取线程信息（返回 ThreadSnapshot，不打印）
+pub fn threads_info(pid: u32) -> Result<ThreadSnapshot> {
+    let args: Vec<String> = vec![pid.to_string(), "Thread.print".to_string()];
+    let output = Command::new("jcmd").args(&args).output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(Error::new(format!("jcmd 执行失败: {}", stderr)));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(parse_threads_output(&stdout))
+}
+
+/// 生成 Top 快照：聚合堆 + 线程信息
+pub fn top_snapshot(pid: u32) -> Result<TopSnapshot> {
+    let heap = heap_overview(pid)?;
+    let threads = threads_info(pid)?;
+
+    let heap_used_pct = if heap.heap_max > 0 {
+        heap.heap_used as f64 / heap.heap_max as f64 * 100.0
+    } else {
+        0.0
+    };
+
+    Ok(TopSnapshot {
+        heap_used_pct,
+        gc_count: heap.gc_count,
+        gc_pause_ms: heap.gc_pause_ms,
+        thread_count: threads.total,
+        daemon_count: threads.daemon_count,
+    })
+}
+
+/// 渲染 Top 快照的一帧
+fn render_top_frame(pid: u32, snapshot: &TopSnapshot) -> io::Result<()> {
+    let mut out = io::stdout();
+    write!(out, "\x1b[2J\x1b[H")?;
+
+    writeln!(
+        out,
+        "{}{}╔══ JVM Top (PID: {}) ══╗{}",
+        ansi::CYAN, ansi::BOLD, pid, ansi::RESET
+    )?;
+    writeln!(out)?;
+
+    let bar_len = 40;
+    let filled = ((snapshot.heap_used_pct / 100.0) * bar_len as f64) as usize;
+    let bar: String = "=".repeat(filled) + &"-".repeat((bar_len as usize).saturating_sub(filled));
+    let color = if snapshot.heap_used_pct > 80.0 {
+        ansi::RED
+    } else if snapshot.heap_used_pct > 60.0 {
+        ansi::YELLOW
+    } else {
+        ansi::GREEN
+    };
+    writeln!(
+        out,
+        "  堆: {}[{}]{} {:.1}%",
+        color, bar, ansi::RESET, snapshot.heap_used_pct
+    )?;
+    writeln!(out)?;
+    writeln!(
+        out,
+        "  GC: {} 次  暂停: {:.1} ms",
+        snapshot.gc_count, snapshot.gc_pause_ms
+    )?;
+    writeln!(
+        out,
+        "  线程: {} (守护: {})",
+        snapshot.thread_count, snapshot.daemon_count
+    )?;
+    writeln!(out)?;
+
+    writeln!(
+        out,
+        "{}{}╔══════════════════════════════════════════════════════════════╗{}",
+        ansi::CYAN, ansi::BOLD, ansi::RESET
+    )?;
+    writeln!(
+        out,
+        "{}{}  q {}{} 退出",
+        ansi::CYAN, ansi::BOLD, ansi::WHITE_ON_RED, ansi::RESET
+    )?;
+    writeln!(
+        out,
+        "{}{}╚══════════════════════════════════════════════════════════════╝{}",
+        ansi::CYAN, ansi::BOLD, ansi::RESET
+    )?;
+    out.flush()?;
+    Ok(())
+}
+
+/// Top 实时面板：非 TTY 打印一次快照，TTY 进入 raw mode 每秒刷新
+pub fn top_tui(pid: u32) -> Result<()> {
+    if !atty::is(atty::Stream::Stdout) {
+        let snapshot = top_snapshot(pid)?;
+        render_top_frame(pid, &snapshot)?;
+        return Ok(());
+    }
+
+    let _guard =
+        TerminalGuard::enter().map_err(|e| Error::new(format!("TUI 初始化失败: {e:?}")))?;
+
+    let mut should_quit = false;
+    let tick_rate = Duration::from_secs(1);
+
+    loop {
+        if let Ok(snapshot) = top_snapshot(pid) {
+            let _ = render_top_frame(pid, &snapshot);
+        }
+
+        if event::poll(tick_rate)? {
+            if let Event::Key(key) = event::read()? {
+                if key.kind == KeyEventKind::Press {
+                    if let KeyCode::Char('q') = key.code {
+                        should_quit = true;
+                    }
+                }
+            }
+        }
+
+        if should_quit {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
+
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]

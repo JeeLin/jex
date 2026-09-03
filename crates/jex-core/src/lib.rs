@@ -10,3 +10,5 @@ pub mod search;
 pub mod util;
 pub mod profiler;
 pub mod jfr;
+pub mod fmt;
+pub mod script;

@@ -401,7 +401,7 @@ fn extract_event_from_record(record: &[u8], header: &JfrHeader) -> Option<JfrEve
     // 这里使用常见的事件类型名称模式
     let event_type = match event_type_id {
         101 => EventType::CpuSampling,
-        160 | 161 | 162 => EventType::GcEvent,
+        160..=162 => EventType::GcEvent,
         110 => EventType::FileRead,
         111 => EventType::FileWrite,
         120 => EventType::SocketRead,
@@ -634,7 +634,7 @@ mod tests {
         assert!(parse_jfr_header(&data).is_err());
 
         // 错误的 magic number
-        let mut data = vec![0u8; 68];
+        let mut data = [0u8; 68];
         data[0..4].copy_from_slice(b"TEST");
         // parse_jfr_header 不检查 magic（由 parse_jfr 检查），但大小应该够
     }

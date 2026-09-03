@@ -245,6 +245,17 @@ fn planned(phase: &str, detail: &str) -> Result<()> {
     Ok(())
 }
 
+/// 根据 FmtArgs 的 check/stdout 标志确定输出模式
+fn fmt_output_mode(args: &FmtArgs) -> fmt::OutputMode {
+    if args.stdout {
+        fmt::OutputMode::Stdout
+    } else if args.check {
+        fmt::OutputMode::Check
+    } else {
+        fmt::OutputMode::Write
+    }
+}
+
 fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Commands::Jdk(c) => match c {
@@ -278,6 +289,7 @@ fn run(cli: Cli) -> Result<()> {
             if let Ok(toml_config) = jex_core::config::read_fmt_config() {
                 config = toml_config;
             }
+            let mode = fmt_output_mode(&a);
             if a.changed {
                 let files = fmt::format_changed(&config)?;
                 if files.is_empty() {
@@ -285,37 +297,16 @@ fn run(cli: Cli) -> Result<()> {
                     return Ok(());
                 }
                 for file in &files {
-                    match fmt::format_file(file, &config) {
-                        Ok(formatted) => {
-                            if a.stdout {
-                                println!("--- {file:?} ---");
-                                println!("{formatted}");
-                            } else if a.check {
-                                println!("would format: {file:?}");
-                            } else {
-                                std::fs::write(file, formatted.as_bytes())?;
-                                println!("formatted: {file:?}");
-                            }
-                        }
-                        Err(e) => eprintln!("格式化 {file:?} 失败: {e}"),
+                    if let Err(e) = fmt::format_and_output(file, &config, mode) {
+                        eprintln!("格式化 {file:?} 失败: {e}");
                     }
                 }
             } else {
                 for path_str in &a.paths {
                     let path = std::path::Path::new(path_str);
                     if path.is_file() {
-                        match fmt::format_file(path, &config) {
-                            Ok(formatted) => {
-                                if a.stdout {
-                                    println!("{formatted}");
-                                } else if a.check {
-                                    println!("would format: {path:?}");
-                                } else {
-                                    std::fs::write(path, formatted.as_bytes())?;
-                                    println!("formatted: {path:?}");
-                                }
-                            }
-                            Err(e) => eprintln!("格式化 {path:?} 失败: {e}"),
+                        if let Err(e) = fmt::format_and_output(path, &config, mode) {
+                            eprintln!("格式化 {path:?} 失败: {e}");
                         }
                     } else if path.is_dir() {
                         for entry in std::fs::read_dir(path)? {
@@ -324,21 +315,10 @@ fn run(cli: Cli) -> Result<()> {
                             if entry_path.is_file()
                                 && entry_path.to_string_lossy().ends_with(".java")
                             {
-                                match fmt::format_file(&entry_path, &config) {
-                                    Ok(formatted) => {
-                                        if a.stdout {
-                                            println!("--- {:?} ---", entry_path);
-                                            println!("{formatted}");
-                                        } else if a.check {
-                                            println!("would format: {:?}", entry_path);
-                                        } else {
-                                            std::fs::write(&entry_path, formatted.as_bytes())?;
-                                            println!("formatted: {:?}", entry_path);
-                                        }
-                                    }
-                                    Err(e) => {
-                                        eprintln!("格式化 {:?} 失败: {e}", entry_path)
-                                    }
+                                if let Err(e) =
+                                    fmt::format_and_output(&entry_path, &config, mode)
+                                {
+                                    eprintln!("格式化 {:?} 失败: {e}", entry_path);
                                 }
                             }
                         }

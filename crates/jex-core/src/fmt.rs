@@ -54,6 +54,19 @@ impl Default for FmtConfig {
     }
 }
 
+/// 构建 google-java-format 的公共参数列表（查找 JAR、检查 java、风格参数）
+fn build_gjf_args(config: &FmtConfig) -> Result<Vec<String>> {
+    let jar = find_gjf_jar()?;
+    check_java()?;
+    let mut args = vec!["-jar".to_string(), jar.to_string_lossy().to_string()];
+    match config.style {
+        Style::Aosp => args.push("--aosp".to_string()),
+        Style::OpenJ7 => args.push("--google-java-format-1.7".to_string()),
+        Style::Google => {}
+    }
+    Ok(args)
+}
+
 /// 查找 google-java-format JAR
 fn find_gjf_jar() -> Result<PathBuf> {
     let jar_name = "google-java-format-1.19.2-all-deps.jar";
@@ -83,17 +96,7 @@ fn check_java() -> Result<()> {
 
 /// 格式化单个文件，返回格式化后的代码
 pub fn format_file(path: &Path, config: &FmtConfig) -> Result<String> {
-    let jar = find_gjf_jar()?;
-    check_java()?;
-    let mut args = vec![
-        "-jar".to_string(),
-        jar.to_string_lossy().to_string(),
-    ];
-    match config.style {
-        Style::Aosp => args.push("--aosp".to_string()),
-        Style::OpenJ7 => args.push("--google-java-format-1.7".to_string()),
-        Style::Google => {}
-    }
+    let mut args = build_gjf_args(config)?;
     if config.skip_future {
         args.push("--skip-sorting-imports".to_string());
     }
@@ -111,17 +114,7 @@ pub fn format_file(path: &Path, config: &FmtConfig) -> Result<String> {
 
 /// 格式化代码字符串，返回格式化后的代码
 pub fn format_code(code: &str, config: &FmtConfig) -> Result<String> {
-    let jar = find_gjf_jar()?;
-    check_java()?;
-    let mut args = vec![
-        "-jar".to_string(),
-        jar.to_string_lossy().to_string(),
-    ];
-    match config.style {
-        Style::Aosp => args.push("--aosp".to_string()),
-        Style::OpenJ7 => args.push("--google-java-format-1.7".to_string()),
-        Style::Google => {}
-    }
+    let args = build_gjf_args(config)?;
     let mut child = Command::new("java")
         .args(&args)
         .stdin(std::process::Stdio::piped())
@@ -173,6 +166,36 @@ pub fn format_changed(config: &FmtConfig) -> Result<Vec<PathBuf>> {
         })
         .filter(|f| f.exists())
         .collect())
+}
+
+/// 格式化输出模式
+#[derive(Debug, Clone, Copy)]
+pub enum OutputMode {
+    /// 输出到 stdout
+    Stdout,
+    /// 检查模式（不修改文件）
+    Check,
+    /// 直接写入文件
+    Write,
+}
+
+/// 对单个文件执行格式化并按指定模式输出结果
+pub fn format_and_output(path: &Path, config: &FmtConfig, mode: OutputMode) -> Result<()> {
+    let formatted = format_file(path, config)?;
+    match mode {
+        OutputMode::Stdout => {
+            println!("--- {} ---", path.display());
+            println!("{formatted}");
+        }
+        OutputMode::Check => {
+            println!("would format: {}", path.display());
+        }
+        OutputMode::Write => {
+            std::fs::write(path, formatted.as_bytes())?;
+            println!("formatted: {}", path.display());
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

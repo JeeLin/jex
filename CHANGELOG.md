@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-03
+
+### Added
+- 自更新：`jex self update` 命令检查并更新到最新版本
+- 版本检查：通过 GitHub Releases API 获取最新版本
+- 跨平台下载：支持 Linux/macOS x86_64/aarch64/Windows
+- 原子替换：下载临时文件后 rename 替换，失败自动回滚
+### Changed
+- reqwest 启用 json feature（用于 GitHub API 解析）
+
 ## [0.9.0] - 2026-09-03
 
 ### Added

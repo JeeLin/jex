@@ -1,4 +1,5 @@
 //! 一键运行（解析 → 编译 → 运行 + 缓存）
+//! - compile: 编译 Java 文件（供 jex build 和 jex run 共用）
 //! - run: 自动解析依赖 → 拼 classpath → javac → java
 
 use crate::deps;
@@ -117,9 +118,8 @@ pub fn get_or_compile(script_path: &Path, meta: &ScriptMeta) -> Result<PathBuf> 
     Ok(class_dir)
 }
 
-/// 运行 Java 文件
 /// 编译 Java 文件（独立编译命令，供 jex build 和 jex run 共用）
-pub fn compile(file: &str, clean: bool) -> Result<PathBuf> {
+pub fn compile(files: &[&str], clean: bool) -> Result<PathBuf> {
     // 1. 读取配置
     let config = deps::read_jex_toml()?;
     let lock = deps::read_jex_lock()?;
@@ -143,15 +143,18 @@ pub fn compile(file: &str, clean: bool) -> Result<PathBuf> {
     fs::create_dir_all(&build)?;
 
     // 5. 编译
-    println!("Compiling {}...", file);
+    println!("Compiling {} files...", files.len());
 
     let mut compile_cmd = Command::new(&javac_bin);
     compile_cmd
         .arg("-cp")
         .arg(&classpath)
         .arg("-d")
-        .arg(&build)
-        .arg(file);
+        .arg(&build);
+
+    for file in files {
+        compile_cmd.arg(file);
+    }
 
     // 添加编译参数
     if let Some(build_config) = &config.build {
@@ -170,6 +173,30 @@ pub fn compile(file: &str, clean: bool) -> Result<PathBuf> {
     Ok(build)
 }
 
+/// 收集 src/ 下所有 .java 文件
+pub fn collect_java_files() -> Result<Vec<String>> {
+    let src_dir = Path::new("src");
+    if !src_dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut files = Vec::new();
+    collect_java_files_recursive(src_dir, &mut files)?;
+    Ok(files)
+}
+
+fn collect_java_files_recursive(dir: &Path, files: &mut Vec<String>) -> Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            collect_java_files_recursive(&path, files)?;
+        } else if path.extension().and_then(|e| e.to_str()) == Some("java") {
+            files.push(path.to_string_lossy().to_string());
+        }
+    }
+    Ok(())
+}
+
 /// 运行 Java 文件
 pub fn run(file: &str, args: &[String]) -> Result<()> {
     // 1. 检查文件是否存在
@@ -180,52 +207,21 @@ pub fn run(file: &str, args: &[String]) -> Result<()> {
 
     // 2. 读取配置
     let config = deps::read_jex_toml()?;
-    let lock = deps::read_jex_lock()?;
 
     // 3. 获取 JDK 路径
     let java_home = jdk::which_java_home()?;
     let java_bin = java_home.join("bin").join("java");
-    let javac_bin = java_home.join("bin").join("javac");
 
     if !java_bin.exists() {
         return Err(Error::new(format!("java 不存在: {}", java_bin.display())));
     }
-    if !javac_bin.exists() {
-        return Err(Error::new(format!("javac 不存在: {}", javac_bin.display())));
-    }
 
-    // 4. 构建 classpath
+    // 4. 编译（复用 compile 函数）
+    let build = compile(&[file], false)?;
+    let lock = deps::read_jex_lock()?;
     let classpath = build_classpath(&lock)?;
-    // 5. 创建构建输出目录
-    let build = build_dir()?;
-    fs::create_dir_all(&build)?;
 
-    // 6. 编译
-    println!("编译 {}...", file);
-
-    let mut compile_cmd = Command::new(&javac_bin);
-    compile_cmd
-        .arg("-cp")
-        .arg(&classpath)
-        .arg("-d")
-        .arg(&build)
-        .arg(file);
-
-    // 添加编译参数
-    if let Some(build_config) = &config.build {
-        if let Some(compiler_args) = &build_config.compiler_args {
-            for arg in compiler_args {
-                compile_cmd.arg(arg);
-            }
-        }
-    }
-
-    let status = compile_cmd.status()?;
-    if !status.success() {
-        return Err(Error::new("编译失败"));
-    }
-
-    // 7. 运行
+    // 5. 运行
     println!("运行 {}...", file);
 
     // 提取主类名：优先 [project].main，否则从文件名推导
@@ -368,5 +364,16 @@ mod tests {
         // Second call should hit cache
         let dir2 = get_or_compile(&script, &meta).unwrap();
         assert_eq!(dir1, dir2);
+    }
+
+    #[test]
+    fn test_collect_java_files_empty_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        let result = collect_java_files();
+        std::env::set_current_dir(&orig).unwrap();
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
     }
 }

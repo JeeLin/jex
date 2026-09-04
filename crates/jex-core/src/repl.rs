@@ -23,23 +23,23 @@ pub fn start_repl(class_only: bool) -> Result<()> {
     let mut classpath = String::new();
     if !class_only {
         if let Ok(lock) = deps::read_jex_lock() {
-                let dependencies = lock.dependencies.unwrap_or_default();
-                let mut paths = Vec::new();
-                for (coord, version) in &dependencies {
-                    let parts: Vec<&str> = coord.split(':').collect();
-                    if parts.len() >= 2 {
-                        let path = format!(
-                            "{}/{}/{}/{}-{}.jar",
-                            crate::config::jex_m2_cache()?.display(),
-                            parts[0].replace('.', "/"),
-                            parts[1],
-                            parts[1],
-                            version
-                        );
-                        paths.push(path);
-                    }
+            let dependencies = lock.dependencies.unwrap_or_default();
+            let mut paths = Vec::new();
+            for (coord, version) in &dependencies {
+                let parts: Vec<&str> = coord.split(':').collect();
+                if parts.len() >= 2 {
+                    let path = format!(
+                        "{}/{}/{}/{}-{}.jar",
+                        crate::config::jex_m2_cache()?.display(),
+                        parts[0].replace('.', "/"),
+                        parts[1],
+                        parts[1],
+                        version
+                    );
+                    paths.push(path);
                 }
-                classpath = paths.join(":");
+            }
+            classpath = paths.join(":");
         }
     }
 
@@ -55,7 +55,7 @@ pub fn start_repl(class_only: bool) -> Result<()> {
     }
     println!("输入 Java 代码，/exit 退出\n");
 
-    // 4. 启动 jshell 进程
+    // 4. 启动 jshell 进程（使用 quiet 反馈模式）
     let mut cmd = Command::new(&jshell_bin);
     cmd.arg("--feedback").arg("quiet");
 
@@ -75,9 +75,11 @@ pub fn start_repl(class_only: bool) -> Result<()> {
     })?;
 
     let stdin = child.stdin.as_mut().ok_or_else(|| Error::new("无法获取 jshell stdin"))?;
-    let stdout = child.stdout.as_mut().ok_or_else(|| Error::new("无法获取 jshell stdout"))?;
+    let mut stdout = child.stdout.take().ok_or_else(|| Error::new("无法获取 jshell stdout"))?;
 
     // 5. 交互循环
+    use std::io::BufRead;
+    let mut reader = io::BufReader::new(&mut stdout);
     let mut stdout_lock = io::stdout();
 
     loop {
@@ -104,49 +106,21 @@ pub fn start_repl(class_only: bool) -> Result<()> {
         writeln!(stdin, "{}", input)?;
         stdin.flush()?;
 
-        // 读取 jshell 输出
-        // jshell 在 quiet 模式下，表达式结果会直接输出
-        // 我们需要读取直到下一个提示符或 EOF
-        let mut output_lines = Vec::new();
-        let mut buffer = String::new();
-
-        // 使用非阻塞方式读取输出
-        // jshell quiet 模式下，每条语句的输出以换行结束
-        let mut byte_buf = [0u8; 1024];
+        // 读取 jshell 输出（quiet 模式下每条输出以换行结束）
+        // 使用 read_line 逐行读取，遇到空行或超时停止
         loop {
-            use std::io::Read;
-            match stdout.read(&mut byte_buf) {
+            let mut line = String::new();
+            match reader.read_line(&mut line) {
                 Ok(0) => break, // EOF
-                Ok(n) => {
-                    let chunk = String::from_utf8_lossy(&byte_buf[..n]);
-                    buffer.push_str(&chunk);
-                    // 检查是否有完整行
-                    while let Some(pos) = buffer.find('\n') {
-                        let line = buffer[..pos].to_string();
-                        buffer = buffer[pos + 1..].to_string();
-                        if !line.trim().is_empty() {
-                            output_lines.push(line);
-                        }
+                Ok(_) => {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() {
+                        break; // 空行表示 jshell 输出结束
                     }
+                    println!("{}", trimmed);
                 }
                 Err(_) => break,
             }
-
-            // 简单的延迟避免忙等
-            if !buffer.is_empty() || !output_lines.is_empty() {
-                break;
-            }
-        }
-
-        // 输出结果
-        for line in &output_lines {
-            println!("{}", line);
-        }
-
-        // 如果有残余 buffer
-        let remaining = buffer.trim();
-        if !remaining.is_empty() {
-            println!("{}", remaining);
         }
     }
 

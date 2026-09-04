@@ -342,7 +342,13 @@ fn run(cli: Cli) -> Result<()> {
             run::run(&a.file, &a.args)
         }
         Commands::Build(a) => {
-            let build = run::compile("*", a.clean)?;
+            let files = run::collect_java_files()?;
+            if files.is_empty() {
+                println!("src/ 下没有 .java 文件");
+                return Ok(());
+            }
+            let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
+            let build = run::compile(&file_refs, a.clean)?;
             println!("✅ Build complete → {}", build.display());
             Ok(())
         }

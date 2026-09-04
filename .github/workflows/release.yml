@@ -1,0 +1,192 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # ── 检查（平台无关，只需一次） ──────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: lint
+          save-if: ${{ github.event_name == 'push' }}
+      - name: Check format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+      - name: Test
+        run: cargo test --workspace
+
+  # ── 构建 Rust 二进制（5 平台矩阵） ──────────────────
+  build-binaries:
+    needs: [lint]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            arch: linux-amd64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+            arch: linux-arm64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            arch: mac-amd64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            arch: mac-arm64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            arch: windows-amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: build-${{ matrix.target }}
+          save-if: ${{ github.event_name == 'push' }}
+      # Linux：安装静态依赖
+      - name: Install static deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev zlib1g-dev pkg-config
+      # macOS：安装 openssl
+      - name: Install OpenSSL (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install pkg-config
+          if [ "${{ matrix.arch }}" = "mac-amd64" ]; then
+            VER=3.5.6
+            curl -fsSL "https://www.openssl.org/source/openssl-${VER}.tar.gz" -o /tmp/openssl.tgz
+            tar -xzf /tmp/openssl.tgz -C /tmp
+            cd "/tmp/openssl-${VER}"
+            ./Configure darwin64-x86_64-cc --prefix="$HOME/openssl-x86_64" --openssldir="$HOME/openssl-x86_64" no-shared no-tests
+            make -j"$(sysctl -n hw.ncpu)"
+            make install_sw
+            echo "OPENSSL_ROOT_DIR=$HOME/openssl-x86_64" >> "$GITHUB_ENV"
+            echo "OPENSSL_LIB_DIR=$HOME/openssl-x86_64/lib" >> "$GITHUB_ENV"
+            echo "OPENSSL_INCLUDE_DIR=$HOME/openssl-x86_64/include" >> "$GITHUB_ENV"
+            echo "PKG_CONFIG_PATH=$HOME/openssl-x86_64/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
+          else
+            brew install openssl@3
+            P=$(brew --prefix openssl@3)
+            echo "OPENSSL_ROOT_DIR=$P" >> "$GITHUB_ENV"
+            echo "OPENSSL_LIB_DIR=$P/lib" >> "$GITHUB_ENV"
+            echo "OPENSSL_INCLUDE_DIR=$P/include" >> "$GITHUB_ENV"
+            echo "PKG_CONFIG_PATH=$P/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
+          fi
+      # Windows：安装 openssl
+      - name: Install OpenSSL (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install --no-progress openssl
+          $roots = @(
+            "${env:ProgramFiles}\OpenSSL",
+            "${env:ProgramFiles}\OpenSSL-Win64",
+            "${env:ProgramFiles(x86)}\OpenSSL-Win64",
+            "C:\OpenSSL-Win64"
+          )
+          $opensslRoot = $null
+          foreach ($r in $roots) {
+            if (Test-Path "$r\include\openssl\ssl.h") { $opensslRoot = $r; break }
+          }
+          if (-not $opensslRoot) {
+            $opensslRoot = Get-ChildItem "${env:ProgramFiles}" -Directory -Filter "OpenSSL*" -ErrorAction SilentlyContinue |
+              Where-Object { Test-Path "$($_.FullName)\include\openssl\ssl.h" } |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $opensslRoot) { throw "OpenSSL root not found under Program Files" }
+          $sslLibDir = $null
+          foreach ($sub in @("", "VC\x64\MD", "VC\x64\MT")) {
+            $d = Join-Path $opensslRoot "lib\$sub"
+            if (-not (Test-Path $d)) { continue }
+            $libs = Get-ChildItem $d -Filter "*.lib" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(lib)?(ssl|crypto)\.lib$' }
+            $ssl = $libs | Where-Object { $_.Name -match '^(lib)?ssl\.lib$' }
+            $crypto = $libs | Where-Object { $_.Name -match '^(lib)?crypto\.lib$' }
+            if ($ssl -and $crypto) { $sslLibDir = $d; break }
+          }
+          if (-not $sslLibDir) { throw "OpenSSL import libs not found" }
+          $staticSsl = Join-Path $sslLibDir "libssl_static.lib"
+          $staticCrypto = Join-Path $sslLibDir "libcrypto_static.lib"
+          if (-not (Test-Path $staticSsl)) { throw "static OpenSSL lib not found: $staticSsl" }
+          if (-not (Test-Path $staticCrypto)) { throw "static OpenSSL lib not found: $staticCrypto" }
+          "OPENSSL_ROOT=$opensslRoot" >> $env:GITHUB_ENV
+          "OPENSSL_LIB_DIR=$sslLibDir" >> $env:GITHUB_ENV
+          "OPENSSL_INCLUDE_DIR=$opensslRoot\include" >> $env:GITHUB_ENV
+      # 静态链接
+      - name: Static OpenSSL env
+        if: runner.os != 'Windows'
+        run: |
+          echo "OPENSSL_STATIC=1" >> "$GITHUB_ENV"
+          echo "ZLIB_STATIC=1" >> "$GITHUB_ENV"
+      - name: Build jex
+        run: cargo build --release --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@v6
+        with:
+          name: binaries-${{ matrix.arch }}
+          path: |
+            target/${{ matrix.target }}/release/jex*
+            target/${{ matrix.target }}/release/jex.exe
+
+  # ── Release: GitHub Release + SHA256SUMS ─────
+  release:
+    needs: [build-binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download all binaries
+        uses: actions/download-artifact@v8
+        with:
+          pattern: binaries-*
+          path: artifacts/
+          merge-multiple: false
+      - name: Prepare release binaries
+        run: |
+          for dir in artifacts/binaries-*/; do
+            arch=$(basename "$dir" | sed 's/^binaries-//')
+            if [ -f "$dir/jex.exe" ]; then
+              cp "$dir/jex.exe" "jex-${arch}.exe"
+            elif [ -f "$dir/jex" ]; then
+              cp "$dir/jex" "jex-${arch}"
+            fi
+          done
+          chmod +x jex-* 2>/dev/null || true
+      - name: Generate SHA256SUMS
+        run: sha256sum jex-* > SHA256SUMS
+      - name: Extract changelog
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md > release-body.md
+          if [ ! -s release-body.md ]; then
+            echo "No changelog entry for v${VERSION}" > release-body.md
+          fi
+          echo "" >> release-body.md
+          echo "## SHA256SUMS" >> release-body.md
+          echo '```' >> release-body.md
+          cat SHA256SUMS >> release-body.md
+          echo '```' >> release-body.md
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          body_path: release-body.md
+          files: |
+            jex-*
+            SHA256SUMS

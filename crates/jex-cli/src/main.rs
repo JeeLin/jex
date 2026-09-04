@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
 use jex_core::{deps, diag, export, fmt, jdk, jfr, profiler, run, search};
 use std::path::PathBuf;
@@ -47,7 +47,7 @@ enum Commands {
 
     /// 仅编译
     #[command(alias = "b")]
-    Build,
+    Build(BuildArgs),
 
     /// 依赖树
     #[command(alias = "t")]
@@ -80,6 +80,13 @@ enum Commands {
     /// JVM 诊断(gc / threads / heap / 火焰图 / 录制)
     #[command(subcommand)]
     Java(JavaCommand),
+
+    /// 交互式 Java 求值(jshell)
+    #[command(alias = "rp")]
+    Repl(ReplArgs),
+
+    /// 生成 shell 自动补全脚本
+    Completions(CompletionsArgs),
 
     /// 自更新
     #[command(alias = "su")]
@@ -130,6 +137,7 @@ struct SelfUpdateArgs {
     #[arg(long)]
     check: bool,
 }
+
 #[derive(Args)]
 struct InitArgs {
     /// 项目名
@@ -167,6 +175,13 @@ struct RunArgs {
     /// 传给程序的参数
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     args: Vec<String>,
+}
+
+#[derive(Args)]
+struct BuildArgs {
+    /// 清理编译缓存后重新编译
+    #[arg(long)]
+    clean: bool,
 }
 
 #[derive(Args)]
@@ -248,18 +263,33 @@ struct AnalyzeArgs {
     top: usize,
 }
 
+#[derive(Args)]
+struct ReplArgs {
+    /// 仅加载已编译的 class（不加载依赖 jar）
+    #[arg(long)]
+    class_only: bool,
+}
+
+#[derive(Clone, ValueEnum)]
+enum Shell {
+    Bash,
+    Zsh,
+    Fish,
+    Powershell,
+}
+
+#[derive(Args)]
+struct CompletionsArgs {
+    /// 目标 shell
+    shell: Shell,
+}
+
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
         eprintln!("错误: {e}");
         std::process::exit(1);
     }
-}
-
-/// 提示命令还未实现的辅助函数
-fn planned(phase: &str, detail: &str) -> Result<()> {
-    println!("[{phase}] {detail} 尚未实现");
-    Ok(())
 }
 
 /// 根据 FmtArgs 的 check/stdout 标志确定输出模式
@@ -311,13 +341,23 @@ fn run(cli: Cli) -> Result<()> {
             // Fallback to original run
             run::run(&a.file, &a.args)
         }
-        Commands::Build => planned("1.4", "build"),
+        Commands::Build(a) => {
+            let build = run::compile("*", a.clean)?;
+            println!("✅ Build complete → {}", build.display());
+            Ok(())
+        }
         Commands::Tree => deps::tree(),
         Commands::Why(a) => deps::why(&a.coord),
         Commands::Conflict => deps::conflict(),
-        Commands::Analyze => planned("2.x", "analyze"),
+        Commands::Analyze => {
+            use jex_core::analyze;
+            analyze::analyze_project()
+        }
         Commands::Export => export::maven(),
-        Commands::Import => planned("2.x", "import pom"),
+        Commands::Import => {
+            println!("[Phase 3] import pom 尚未实现");
+            Ok(())
+        }
         Commands::Fmt(a) => {
             let mut config = fmt::FmtConfig::default();
             if let Ok(toml_config) = jex_core::config::read_fmt_config() {
@@ -412,6 +452,23 @@ fn run(cli: Cli) -> Result<()> {
             }
             JavaCommand::Top(a) => diag::top_tui(a.pid),
         },
+        Commands::Repl(a) => {
+            use jex_core::repl;
+            repl::start_repl(a.class_only)
+        }
+        Commands::Completions(a) => {
+            use clap_complete;
+            let mut cmd = <Cli as clap::CommandFactory>::command();
+            let shell = match a.shell {
+                Shell::Bash => clap_complete::Shell::Bash,
+                Shell::Zsh => clap_complete::Shell::Zsh,
+                Shell::Fish => clap_complete::Shell::Fish,
+                Shell::Powershell => clap_complete::Shell::PowerShell,
+            };
+            let bin_name = cmd.get_name().to_string();
+            clap_complete::generate(shell, &mut cmd, bin_name, &mut std::io::stdout());
+            Ok(())
+        }
         Commands::Self_(c) => match c {
             SelfCommand::Update(a) => {
                 use jex_core::update;

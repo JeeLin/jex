@@ -118,6 +118,59 @@ pub fn get_or_compile(script_path: &Path, meta: &ScriptMeta) -> Result<PathBuf> 
 }
 
 /// 运行 Java 文件
+/// 编译 Java 文件（独立编译命令，供 jex build 和 jex run 共用）
+pub fn compile(file: &str, clean: bool) -> Result<PathBuf> {
+    // 1. 读取配置
+    let config = deps::read_jex_toml()?;
+    let lock = deps::read_jex_lock()?;
+
+    // 2. 获取 JDK 路径
+    let java_home = jdk::which_java_home()?;
+    let javac_bin = java_home.join("bin").join("javac");
+
+    if !javac_bin.exists() {
+        return Err(Error::new(format!("javac 不存在: {}", javac_bin.display())));
+    }
+
+    // 3. 构建 classpath
+    let classpath = build_classpath(&lock)?;
+
+    // 4. 创建构建输出目录
+    let build = build_dir()?;
+    if clean && build.exists() {
+        fs::remove_dir_all(&build)?;
+    }
+    fs::create_dir_all(&build)?;
+
+    // 5. 编译
+    println!("Compiling {}...", file);
+
+    let mut compile_cmd = Command::new(&javac_bin);
+    compile_cmd
+        .arg("-cp")
+        .arg(&classpath)
+        .arg("-d")
+        .arg(&build)
+        .arg(file);
+
+    // 添加编译参数
+    if let Some(build_config) = &config.build {
+        if let Some(compiler_args) = &build_config.compiler_args {
+            for arg in compiler_args {
+                compile_cmd.arg(arg);
+            }
+        }
+    }
+
+    let status = compile_cmd.status()?;
+    if !status.success() {
+        return Err(Error::new("编译失败"));
+    }
+
+    Ok(build)
+}
+
+/// 运行 Java 文件
 pub fn run(file: &str, args: &[String]) -> Result<()> {
     // 1. 检查文件是否存在
     let file_path = Path::new(file);

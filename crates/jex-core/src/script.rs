@@ -127,11 +127,7 @@ mod tests {
     #[test]
     fn test_parse_non_script() {
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(
-            file,
-            "import java.util.List;\n\npublic class Main {{}}"
-        )
-        .unwrap();
+        writeln!(file, "import java.util.List;\n\npublic class Main {{}}").unwrap();
 
         let meta = parse_script(file.path()).unwrap();
         assert!(!meta.is_script);

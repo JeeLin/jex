@@ -310,7 +310,7 @@ fn run(cli: Cli) -> Result<()> {
             }
             // Fallback to original run
             run::run(&a.file, &a.args)
-        },
+        }
         Commands::Build => planned("1.4", "build"),
         Commands::Tree => deps::tree(),
         Commands::Why(a) => deps::why(&a.coord),
@@ -349,9 +349,7 @@ fn run(cli: Cli) -> Result<()> {
                             if entry_path.is_file()
                                 && entry_path.to_string_lossy().ends_with(".java")
                             {
-                                if let Err(e) =
-                                    fmt::format_and_output(&entry_path, &config, mode)
-                                {
+                                if let Err(e) = fmt::format_and_output(&entry_path, &config, mode) {
                                     eprintln!("格式化 {:?} 失败: {e}", entry_path);
                                 }
                             }

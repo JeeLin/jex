@@ -348,7 +348,10 @@ mod tests {
             }),
             dependencies: Some({
                 let mut deps = HashMap::new();
-                deps.insert("com.google.code.gson:gson".to_string(), "2.11.0".to_string());
+                deps.insert(
+                    "com.google.code.gson:gson".to_string(),
+                    "2.11.0".to_string(),
+                );
                 deps
             }),
             repositories: Some({

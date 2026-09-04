@@ -44,8 +44,7 @@ fn jcmd_path() -> Result<String> {
 /// 启动 JFR 录制
 pub fn start_recording(pid: u32, duration_secs: Option<u32>) -> Result<RecordingSession> {
     let output_dir = std::env::temp_dir().join(format!("jex-rec-{pid}"));
-    fs::create_dir_all(&output_dir)
-        .map_err(|e| Error::new(format!("创建录制目录失败: {e}")))?;
+    fs::create_dir_all(&output_dir).map_err(|e| Error::new(format!("创建录制目录失败: {e}")))?;
 
     let filename = output_dir.join(format!("recording-{pid}.jfr"));
 
@@ -77,7 +76,9 @@ pub fn start_recording(pid: u32, duration_secs: Option<u32>) -> Result<Recording
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !stdout.contains("started") && !stdout.contains("Started") {
         // 某些 JDK 版本输出格式不同，检查是否有错误
-        if stderr_string(&output).contains("Unable to") || stderr_string(&output).contains("not available") {
+        if stderr_string(&output).contains("Unable to")
+            || stderr_string(&output).contains("not available")
+        {
             return Err(Error::new(
                 "JFR 不可用：目标 JVM 可能不支持 JFR（需要 JDK 11+）\n\
                  提示: 确保目标进程使用 JDK 11 或更高版本运行"

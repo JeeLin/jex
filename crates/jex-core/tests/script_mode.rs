@@ -31,10 +31,7 @@ fn test_parse_shebang_hashbang_style() {
     let meta = parse_script(file.path()).unwrap();
     assert!(meta.is_script);
     assert_eq!(meta.deps.len(), 1);
-    assert_eq!(
-        meta.deps[0],
-        "org.apache.commons:commons-lang3:3.14.0"
-    );
+    assert_eq!(meta.deps[0], "org.apache.commons:commons-lang3:3.14.0");
 }
 
 #[test]
@@ -54,11 +51,7 @@ fn test_parse_multiple_deps() {
 #[test]
 fn test_non_script_file() {
     let mut file = NamedTempFile::new().unwrap();
-    writeln!(
-        file,
-        "import java.util.List;\n\npublic class Main {{}}"
-    )
-    .unwrap();
+    writeln!(file, "import java.util.List;\n\npublic class Main {{}}").unwrap();
 
     let meta = parse_script(file.path()).unwrap();
     assert!(!meta.is_script);
@@ -68,11 +61,7 @@ fn test_non_script_file() {
 fn test_get_or_compile_cache_creation() {
     let tmp = tempfile::tempdir().unwrap();
     let script = tmp.path().join("test.java");
-    std::fs::write(
-        &script,
-        "//DEPS a:b:1.0\npublic class Test {}",
-    )
-    .unwrap();
+    std::fs::write(&script, "//DEPS a:b:1.0\npublic class Test {}").unwrap();
     let meta = ScriptMeta {
         java_version: None,
         deps: vec!["a:b:1.0".to_string()],
@@ -88,11 +77,7 @@ fn test_get_or_compile_cache_creation() {
 fn test_get_or_compile_cache_hit() {
     let tmp = tempfile::tempdir().unwrap();
     let script = tmp.path().join("test.java");
-    std::fs::write(
-        &script,
-        "//DEPS a:b:1.0\npublic class Test {}",
-    )
-    .unwrap();
+    std::fs::write(&script, "//DEPS a:b:1.0\npublic class Test {}").unwrap();
     let meta = ScriptMeta {
         java_version: None,
         deps: vec!["a:b:1.0".to_string()],

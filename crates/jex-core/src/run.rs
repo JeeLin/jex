@@ -79,17 +79,18 @@ fn deps_hash(deps: &[String]) -> String {
 /// 获取脚本缓存目录
 fn script_cache_dir(source_hash: &str) -> Result<PathBuf> {
     let home = dirs::home_dir().ok_or_else(|| Error::new("无法获取用户主目录"))?;
-    Ok(home.join(".jex").join("cache").join("scripts").join(source_hash))
+    Ok(home
+        .join(".jex")
+        .join("cache")
+        .join("scripts")
+        .join(source_hash))
 }
 
 /// 缓存编译：首次编译后缓存 class 文件，依赖或源码未变时跳过编译
-pub fn get_or_compile(
-    script_path: &Path,
-    meta: &ScriptMeta,
-) -> Result<PathBuf> {
+pub fn get_or_compile(script_path: &Path, meta: &ScriptMeta) -> Result<PathBuf> {
     // 1. 计算源码哈希
-    let source = fs::read_to_string(script_path)
-        .map_err(|e| Error::new(format!("无法读取源码: {}", e)))?;
+    let source =
+        fs::read_to_string(script_path).map_err(|e| Error::new(format!("无法读取源码: {}", e)))?;
     let src_hash = content_hash(&source);
 
     // 2. 计算依赖哈希
@@ -115,7 +116,6 @@ pub fn get_or_compile(
     fs::create_dir_all(&class_dir)?;
     Ok(class_dir)
 }
-
 
 /// 运行 Java 文件
 pub fn run(file: &str, args: &[String]) -> Result<()> {

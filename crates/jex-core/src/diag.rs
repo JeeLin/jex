@@ -770,10 +770,7 @@ pub struct HeapOverview {
 fn parse_jstat_gc(output: &str) -> Option<HeapOverview> {
     for line in output.lines() {
         let trimmed = line.trim();
-        if trimmed.is_empty()
-            || trimmed.starts_with("S0C")
-            || trimmed.starts_with("-"  )
-        {
+        if trimmed.is_empty() || trimmed.starts_with("S0C") || trimmed.starts_with("-") {
             continue;
         }
 
@@ -793,16 +790,16 @@ fn parse_jstat_gc(output: &str) -> Option<HeapOverview> {
         // 容量列（KB）：S0C, S1C, EC, OC, MC
         let s0c = parse_kb(parts[0]);
         let s1c = parse_kb(parts[1]);
-        let ec  = parse_kb(parts[4]);
-        let oc  = parse_kb(parts[6]);
-        let _mc  = parse_kb(parts[8]);
+        let ec = parse_kb(parts[4]);
+        let oc = parse_kb(parts[6]);
+        let _mc = parse_kb(parts[8]);
 
         // 利用率列（KB）：S0U, S1U, EU, OU, MU
         let s0u = parse_kb(parts[2]);
         let s1u = parse_kb(parts[3]);
-        let eu  = parse_kb(parts[5]);
-        let ou  = parse_kb(parts[7]);
-        let mu  = parse_kb(parts[9]);
+        let eu = parse_kb(parts[5]);
+        let ou = parse_kb(parts[7]);
+        let mu = parse_kb(parts[9]);
 
         let parse_u64 = |s: &str| -> u64 {
             if s == "-" {
@@ -813,19 +810,19 @@ fn parse_jstat_gc(output: &str) -> Option<HeapOverview> {
         };
 
         // jstat -gc header: S0C S1C S0U S1U EC EU OC OU MC MU CCS CCSC YGC YGCT FGC FGCT GCT
-        let ygc  = parse_u64(parts[12]);
+        let ygc = parse_u64(parts[12]);
         let ygct = parse_kb(parts[13]);
-        let fgc  = parse_u64(parts[14]);
+        let fgc = parse_u64(parts[14]);
         let fgct = parse_kb(parts[15]);
 
         let survivor_used = (s0u + s1u) as u64;
-        let old_gen_used  = ou as u64;
-        let eden_used     = eu as u64;
-        let meta_used     = mu as u64;
-        let heap_used     = survivor_used + eden_used + old_gen_used;
-        let heap_max      = ((s0c + s1c + ec + oc) as u64).max(1);
-        let gc_count      = ygc + fgc;
-        let gc_pause_ms   = (ygct + fgct) * 1000.0;
+        let old_gen_used = ou as u64;
+        let eden_used = eu as u64;
+        let meta_used = mu as u64;
+        let heap_used = survivor_used + eden_used + old_gen_used;
+        let heap_max = ((s0c + s1c + ec + oc) as u64).max(1);
+        let gc_count = ygc + fgc;
+        let gc_pause_ms = (ygct + fgct) * 1000.0;
 
         return Some(HeapOverview {
             heap_used,
@@ -853,8 +850,7 @@ pub fn heap_overview(pid: u32) -> Result<HeapOverview> {
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    parse_jstat_gc(&stdout)
-        .ok_or_else(|| Error::new("无法解析 jstat -gc 输出".to_string()))
+    parse_jstat_gc(&stdout).ok_or_else(|| Error::new("无法解析 jstat -gc 输出".to_string()))
 }
 
 /// 格式化显示堆概览
@@ -882,17 +878,26 @@ pub fn display_heap(pid: u32) -> Result<()> {
     };
     println!(
         "  堆使用: {}[{}]{} {:.1}%  ({:.1} MB / {:.1} MB)",
-        color, bar, ansi::RESET, used_pct,
+        color,
+        bar,
+        ansi::RESET,
+        used_pct,
         overview.heap_used as f64 / 1024.0,
         overview.heap_max as f64 / 1024.0
     );
     println!();
     println!("  Eden:    {:.1} MB", overview.eden_used as f64 / 1024.0);
-    println!("  Survivor:{:.1} MB", overview.survivor_used as f64 / 1024.0);
+    println!(
+        "  Survivor:{:.1} MB",
+        overview.survivor_used as f64 / 1024.0
+    );
     println!("  Old Gen: {:.1} MB", overview.old_gen_used as f64 / 1024.0);
     println!("  Meta:    {:.1} MB", overview.meta_used as f64 / 1024.0);
     println!();
-    println!("  GC 次数: {}  累计暂停: {:.1} ms", overview.gc_count, overview.gc_pause_ms);
+    println!(
+        "  GC 次数: {}  累计暂停: {:.1} ms",
+        overview.gc_count, overview.gc_pause_ms
+    );
     println!();
 
     Ok(())
@@ -952,7 +957,10 @@ fn render_top_frame(pid: u32, snapshot: &TopSnapshot) -> io::Result<()> {
     writeln!(
         out,
         "{}{}╔══ JVM Top (PID: {}) ══╗{}",
-        ansi::CYAN, ansi::BOLD, pid, ansi::RESET
+        ansi::CYAN,
+        ansi::BOLD,
+        pid,
+        ansi::RESET
     )?;
     writeln!(out)?;
 
@@ -969,7 +977,10 @@ fn render_top_frame(pid: u32, snapshot: &TopSnapshot) -> io::Result<()> {
     writeln!(
         out,
         "  堆: {}[{}]{} {:.1}%",
-        color, bar, ansi::RESET, snapshot.heap_used_pct
+        color,
+        bar,
+        ansi::RESET,
+        snapshot.heap_used_pct
     )?;
     writeln!(out)?;
     writeln!(
@@ -987,17 +998,24 @@ fn render_top_frame(pid: u32, snapshot: &TopSnapshot) -> io::Result<()> {
     writeln!(
         out,
         "{}{}╔══════════════════════════════════════════════════════════════╗{}",
-        ansi::CYAN, ansi::BOLD, ansi::RESET
+        ansi::CYAN,
+        ansi::BOLD,
+        ansi::RESET
     )?;
     writeln!(
         out,
         "{}{}  q {}{} 退出",
-        ansi::CYAN, ansi::BOLD, ansi::WHITE_ON_RED, ansi::RESET
+        ansi::CYAN,
+        ansi::BOLD,
+        ansi::WHITE_ON_RED,
+        ansi::RESET
     )?;
     writeln!(
         out,
         "{}{}╚══════════════════════════════════════════════════════════════╝{}",
-        ansi::CYAN, ansi::BOLD, ansi::RESET
+        ansi::CYAN,
+        ansi::BOLD,
+        ansi::RESET
     )?;
     out.flush()?;
     Ok(())
@@ -1039,7 +1057,6 @@ pub fn top_tui(pid: u32) -> Result<()> {
 
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {

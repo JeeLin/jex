@@ -139,11 +139,9 @@ fn download_profiler() -> Result<PathBuf> {
     // 创建临时目录
     let tmp_dir = install_dir.with_file_name(format!("{PROFILER_VERSION}.tmp"));
     if tmp_dir.exists() {
-        fs::remove_dir_all(&tmp_dir)
-            .map_err(|e| Error::new(format!("清理临时目录失败: {e}")))?;
+        fs::remove_dir_all(&tmp_dir).map_err(|e| Error::new(format!("清理临时目录失败: {e}")))?;
     }
-    fs::create_dir_all(&tmp_dir)
-        .map_err(|e| Error::new(format!("创建临时目录失败: {e}")))?;
+    fs::create_dir_all(&tmp_dir).map_err(|e| Error::new(format!("创建临时目录失败: {e}")))?;
 
     // 下载 zip 文件
     let zip_path = tmp_dir.join("profiler.zip");
@@ -193,28 +191,26 @@ fn download_profiler() -> Result<PathBuf> {
             .map_err(|e| Error::new(format!("设置可执行权限失败: {e}")))?;
     }
 
-    println!("✅ async-profiler v{PROFILER_VERSION} 已安装: {}", binary.display());
+    println!(
+        "✅ async-profiler v{PROFILER_VERSION} 已安装: {}",
+        binary.display()
+    );
     Ok(binary)
 }
 
 /// 下载文件（使用 reqwest blocking）
 fn download_file(url: &str, dest: &Path) -> Result<()> {
-    let response = reqwest::blocking::get(url)
-        .map_err(|e| Error::new(format!("下载失败: {e}")))?;
+    let response = reqwest::blocking::get(url).map_err(|e| Error::new(format!("下载失败: {e}")))?;
 
     if !response.status().is_success() {
-        return Err(Error::new(format!(
-            "下载失败: HTTP {}",
-            response.status()
-        )));
+        return Err(Error::new(format!("下载失败: HTTP {}", response.status())));
     }
 
     let bytes = response
         .bytes()
         .map_err(|e| Error::new(format!("读取响应失败: {e}")))?;
 
-    fs::write(dest, &bytes)
-        .map_err(|e| Error::new(format!("写入文件失败: {e}")))?;
+    fs::write(dest, &bytes).map_err(|e| Error::new(format!("写入文件失败: {e}")))?;
 
     Ok(())
 }
@@ -279,8 +275,7 @@ fn flame_output_dir(pid: u32) -> PathBuf {
 /// duration_secs: 采样时长（秒），默认 10 秒
 pub fn profile(pid: u32, duration_secs: u32) -> Result<FlameResult> {
     let output_dir = flame_output_dir(pid);
-    fs::create_dir_all(&output_dir)
-        .map_err(|e| Error::new(format!("创建输出目录失败: {e}")))?;
+    fs::create_dir_all(&output_dir).map_err(|e| Error::new(format!("创建输出目录失败: {e}")))?;
 
     let collapsed_path = output_dir.join("collapsed.txt");
     let svg_path = output_dir.join("flamegraph.svg");
@@ -295,16 +290,21 @@ pub fn profile(pid: u32, duration_secs: u32) -> Result<FlameResult> {
 
     println!("·········· 采样完成");
     if !collapsed_path.exists() {
-        return Err(Error::new(format!("collapsed 文件未生成: {}", collapsed_path.display())));
+        return Err(Error::new(format!(
+            "collapsed 文件未生成: {}",
+            collapsed_path.display()
+        )));
     }
 
     convert_collapsed_to_svg(&collapsed_path, &svg_path)?;
     println!("📊 火焰图已生成: {}", svg_path.display());
 
-    Ok(FlameResult { collapsed_path, svg_path, duration_secs })
+    Ok(FlameResult {
+        collapsed_path,
+        svg_path,
+        duration_secs,
+    })
 }
-
-
 
 /// 构建平台特定的 profiler 命令
 fn run_profiler(pid: u32, duration_secs: u32, collapsed: &Path) -> Result<std::process::Output> {
@@ -314,24 +314,33 @@ fn run_profiler(pid: u32, duration_secs: u32, collapsed: &Path) -> Result<std::p
     match platform.os {
         Os::Linux => {
             cmd.args([
-                "-d", &duration_secs.to_string(),
-                "-f", collapsed.to_str().unwrap_or(""),
-                "-o", "collapsed",
+                "-d",
+                &duration_secs.to_string(),
+                "-f",
+                collapsed.to_str().unwrap_or(""),
+                "-o",
+                "collapsed",
                 &pid.to_string(),
             ]);
         }
         Os::Macos => {
             cmd.args([
-                "-p", &pid.to_string(),
-                "-d", &duration_secs.to_string(),
-                "-f", collapsed.to_str().unwrap_or(""),
+                "-p",
+                &pid.to_string(),
+                "-d",
+                &duration_secs.to_string(),
+                "-f",
+                collapsed.to_str().unwrap_or(""),
             ]);
         }
         Os::Windows => {
-            return Err(Error::new("Windows 暂不支持 async-profiler 火焰图".to_string()));
+            return Err(Error::new(
+                "Windows 暂不支持 async-profiler 火焰图".to_string(),
+            ));
         }
     }
-    cmd.output().map_err(|e| Error::new(format!("执行 profiler 失败: {e}")))
+    cmd.output()
+        .map_err(|e| Error::new(format!("执行 profiler 失败: {e}")))
 }
 
 /// 分类 profiler 错误信息
@@ -486,8 +495,7 @@ fn generate_basic_svg(collapsed: &Path, svg: &Path) -> Result<()> {
     }
 
     svg_content.push_str("</svg>\n");
-    fs::write(svg, &svg_content)
-        .map_err(|e| Error::new(format!("写入 SVG 文件失败: {e}")))?;
+    fs::write(svg, &svg_content).map_err(|e| Error::new(format!("写入 SVG 文件失败: {e}")))?;
 
     Ok(())
 }
@@ -575,11 +583,19 @@ mod tests {
     #[test]
     fn test_platform_binary_relative_path() {
         assert_eq!(
-            Platform { os: Os::Linux, arch: Arch::X86_64 }.binary_relative_path(),
+            Platform {
+                os: Os::Linux,
+                arch: Arch::X86_64
+            }
+            .binary_relative_path(),
             "bin/asprof"
         );
         assert_eq!(
-            Platform { os: Os::Macos, arch: Arch::Aarch64 }.binary_relative_path(),
+            Platform {
+                os: Os::Macos,
+                arch: Arch::Aarch64
+            }
+            .binary_relative_path(),
             "bin/dtrace"
         );
     }

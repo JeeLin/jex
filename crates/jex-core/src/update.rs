@@ -39,7 +39,10 @@ pub fn current_version() -> &'static str {
 
 /// 检查最新版本
 pub fn check_latest() -> Result<UpdateInfo> {
-    let url = format!("https://api.github.com/repos/{}/releases/latest", GITHUB_REPO);
+    let url = format!(
+        "https://api.github.com/repos/{}/releases/latest",
+        GITHUB_REPO
+    );
     let client = reqwest::blocking::Client::builder()
         .user_agent("jex-updater")
         .build()
@@ -123,10 +126,7 @@ fn find_asset_url(assets: &[GitHubAsset], platform: &(String, String)) -> Result
         }
     }
 
-    Err(Error::new(format!(
-        "未找到匹配的二进制文件: {}",
-        pattern
-    )))
+    Err(Error::new(format!("未找到匹配的二进制文件: {}", pattern)))
 }
 
 /// 下载二进制到指定路径
@@ -142,18 +142,14 @@ pub fn download_binary(url: &str, dest: &Path) -> Result<()> {
         .map_err(|e| Error::new(format!("下载失败: {}", e)))?;
 
     if !response.status().is_success() {
-        return Err(Error::new(format!(
-            "下载返回错误: {}",
-            response.status()
-        )));
+        return Err(Error::new(format!("下载返回错误: {}", response.status())));
     }
 
     let bytes = response
         .bytes()
         .map_err(|e| Error::new(format!("读取响应体失败: {}", e)))?;
 
-    std::fs::write(dest, &bytes)
-        .map_err(|e| Error::new(format!("写入文件失败: {}", e)))?;
+    std::fs::write(dest, &bytes).map_err(|e| Error::new(format!("写入文件失败: {}", e)))?;
 
     // Unix: 设置可执行权限
     #[cfg(unix)]

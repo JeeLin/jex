@@ -8,6 +8,7 @@ on:
     branches: [master]
 
 jobs:
+  # ── 检查（平台无关，只需一次） ──────────────────────
   check:
     name: Check
     runs-on: ubuntu-latest
@@ -47,3 +48,95 @@ jobs:
         with:
           install: false
       - run: mise run fmt
+
+  # ── 构建二进制（仅 tag 触发，5 平台矩阵） ──────────
+  build-binaries:
+    name: Build ${{ matrix.arch }}
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [check, clippy, test, fmt]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            arch: linux-amd64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+            arch: linux-arm64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            arch: mac-amd64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            arch: mac-arm64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            arch: windows-amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: build-${{ matrix.target }}
+          save-if: ${{ github.event_name == 'push' }}
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.arch }}
+          path: |
+            target/${{ matrix.target }}/release/jex
+            target/${{ matrix.target }}/release/jex.exe
+
+  # ── Release: GitHub Release + SHA256SUMS ────────────
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binaries-*
+          path: artifacts/
+          merge-multiple: false
+      - name: Prepare release files
+        run: |
+          for dir in artifacts/binaries-*/; do
+            arch=$(basename "$dir" | sed 's/^binaries-//')
+            if [ -f "$dir/jex.exe" ]; then
+              cp "$dir/jex.exe" "jex-${arch}.exe"
+            elif [ -f "$dir/jex" ]; then
+              cp "$dir/jex" "jex-${arch}"
+            fi
+          done
+          chmod +x jex-* 2>/dev/null || true
+      - name: Generate SHA256SUMS
+        run: sha256sum jex-* > SHA256SUMS
+      - name: Extract changelog
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md > release-body.md
+          if [ ! -s release-body.md ]; then
+            echo "No changelog entry for v${VERSION}" > release-body.md
+          fi
+          echo "" >> release-body.md
+          echo "## SHA256SUMS" >> release-body.md
+          echo '```' >> release-body.md
+          cat SHA256SUMS >> release-body.md
+          echo '```' >> release-body.md
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-body.md
+          files: |
+            jex-*
+            SHA256SUMS

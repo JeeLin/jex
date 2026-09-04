@@ -5,6 +5,7 @@ pub mod diag;
 pub mod error;
 pub mod export;
 pub mod fmt;
+pub mod import;
 pub mod jdk;
 pub mod jfr;
 pub mod profiler;

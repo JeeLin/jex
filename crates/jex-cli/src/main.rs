@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{deps, diag, export, fmt, jdk, jfr, profiler, run, search};
+use jex_core::{deps, diag, export, fmt, import, jdk, jfr, profiler, run, search};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -71,7 +71,7 @@ enum Commands {
 
     /// 从 pom.xml 导入
     #[command(alias = "i")]
-    Import,
+    Import(ImportArgs),
 
     /// 代码格式化(google-java-format)
     #[command(alias = "f")]
@@ -284,6 +284,13 @@ struct CompletionsArgs {
     shell: Shell,
 }
 
+#[derive(Args)]
+struct ImportArgs {
+    /// pom.xml 路径（默认当前目录 pom.xml）
+    #[arg(default_value = "pom.xml")]
+    path: String,
+}
+
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
@@ -360,9 +367,9 @@ fn run(cli: Cli) -> Result<()> {
             analyze::analyze_project()
         }
         Commands::Export => export::maven(),
-        Commands::Import => {
-            println!("[Phase 3] import pom 尚未实现");
-            Ok(())
+        Commands::Import(a) => {
+            let pom_path = std::path::Path::new(&a.path);
+            import::import_maven(pom_path)
         }
         Commands::Fmt(a) => {
             let mut config = fmt::FmtConfig::default();

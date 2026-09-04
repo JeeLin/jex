@@ -36,6 +36,11 @@ impl From<serde_json::Error> for Error {
     }
 }
 
+impl From<quick_xml::Error> for Error {
+    fn from(e: quick_xml::Error) -> Self {
+        Error(e.to_string())
+    }
+}
 impl Error {
     pub fn new(msg: impl Into<String>) -> Self {
         Error(msg.into())

@@ -1,3 +1,4 @@
+pub mod analyze;
 pub mod config;
 pub mod deps;
 pub mod diag;
@@ -7,6 +8,7 @@ pub mod fmt;
 pub mod jdk;
 pub mod jfr;
 pub mod profiler;
+pub mod repl;
 pub mod resolver;
 pub mod run;
 pub mod script;

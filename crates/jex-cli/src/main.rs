@@ -348,7 +348,7 @@ fn run(cli: Cli) -> Result<()> {
                 return Ok(());
             }
             let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
-            let build = run::compile(&file_refs, a.clean)?;
+            let (build, _classpath) = run::compile(&file_refs, a.clean)?;
             println!("✅ Build complete → {}", build.display());
             Ok(())
         }

@@ -20,7 +20,8 @@ fn build_dir() -> Result<PathBuf> {
 }
 
 /// 从 jex.lock.toml 构建 classpath（使用 resolver 推导依赖树）
-fn build_classpath(lock: &deps::LockFile) -> Result<String> {
+/// 从 lock 文件构建 classpath jar 路径列表（供 build_classpath 和 repl 共用）
+pub fn build_classpath_vec(lock: &deps::LockFile) -> Result<Vec<String>> {
     let dependencies = lock.dependencies.clone().unwrap_or_default();
     let mut paths: Vec<String> = Vec::new();
 
@@ -58,6 +59,12 @@ fn build_classpath(lock: &deps::LockFile) -> Result<String> {
         }
     }
 
+    Ok(paths)
+}
+
+/// 从 lock 文件构建 classpath 字符串
+fn build_classpath(lock: &deps::LockFile) -> Result<String> {
+    let paths = build_classpath_vec(lock)?;
     Ok(paths.join(":"))
 }
 
@@ -119,7 +126,8 @@ pub fn get_or_compile(script_path: &Path, meta: &ScriptMeta) -> Result<PathBuf> 
 }
 
 /// 编译 Java 文件（独立编译命令，供 jex build 和 jex run 共用）
-pub fn compile(files: &[&str], clean: bool) -> Result<PathBuf> {
+/// 返回 (编译输出目录, classpath 字符串)
+pub fn compile(files: &[&str], clean: bool) -> Result<(PathBuf, String)> {
     // 1. 读取配置
     let config = deps::read_jex_toml()?;
     let lock = deps::read_jex_lock()?;
@@ -132,7 +140,7 @@ pub fn compile(files: &[&str], clean: bool) -> Result<PathBuf> {
         return Err(Error::new(format!("javac 不存在: {}", javac_bin.display())));
     }
 
-    // 3. 构建 classpath
+    // 3. 构建 classpath（一次读取，供编译和后续运行共用）
     let classpath = build_classpath(&lock)?;
 
     // 4. 创建构建输出目录
@@ -170,7 +178,7 @@ pub fn compile(files: &[&str], clean: bool) -> Result<PathBuf> {
         return Err(Error::new("编译失败"));
     }
 
-    Ok(build)
+    Ok((build, classpath))
 }
 
 /// 收集 src/ 下所有 .java 文件
@@ -216,11 +224,8 @@ pub fn run(file: &str, args: &[String]) -> Result<()> {
         return Err(Error::new(format!("java 不存在: {}", java_bin.display())));
     }
 
-    // 4. 编译（复用 compile 函数）
-    let build = compile(&[file], false)?;
-    let lock = deps::read_jex_lock()?;
-    let classpath = build_classpath(&lock)?;
-
+    // 4. 编译（复用 compile 函数，同时获取 classpath）
+    let (build, classpath) = compile(&[file], false)?;
     // 5. 运行
     println!("运行 {}...", file);
 

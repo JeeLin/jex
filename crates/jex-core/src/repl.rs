@@ -3,6 +3,7 @@
 use crate::deps;
 use crate::error::{Error, Result};
 use crate::jdk;
+use crate::run;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 
@@ -19,27 +20,13 @@ pub fn start_repl(class_only: bool) -> Result<()> {
         )));
     }
 
-    // 2. 构建 classpath
+    // 2. 构建 classpath（复用 run 模块的逻辑）
     let mut classpath = String::new();
     if !class_only {
         if let Ok(lock) = deps::read_jex_lock() {
-            let dependencies = lock.dependencies.unwrap_or_default();
-            let mut paths = Vec::new();
-            for (coord, version) in &dependencies {
-                let parts: Vec<&str> = coord.split(':').collect();
-                if parts.len() >= 2 {
-                    let path = format!(
-                        "{}/{}/{}/{}-{}.jar",
-                        crate::config::jex_m2_cache()?.display(),
-                        parts[0].replace('.', "/"),
-                        parts[1],
-                        parts[1],
-                        version
-                    );
-                    paths.push(path);
-                }
+            if let Ok(paths) = run::build_classpath_vec(&lock) {
+                classpath = paths.join(":");
             }
-            classpath = paths.join(":");
         }
     }
 

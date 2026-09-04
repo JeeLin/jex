@@ -10,13 +10,15 @@
 
 | 能力 | 对应命令 | 说明 |
 |------|----------|------|
-| JDK 版本管理 | `jex jdk` | mise 模型：声明式钉版 + 跨设备一致 |
-| 依赖管理 | `jex add/remove/update` | uv 式体验，底层 Coursier |
-| 依赖搜索 | `jex search` | apk 式搜索 Maven Central |
-| 一键运行 | `jex run` | 解析 → 编译 → 运行 |
-| 脚本模式 | `jex run script.java` | 直接运行单文件 Java 脚本（shebang + 文件内依赖声明 + 缓存编译） |
-| JDK 诊断 | `jex java gc/threads/...` | 取代难用的原生工具 |
-| 生态互通 | `jex export/import maven` | 降低退出成本 |
+| [已完成] JDK 版本管理 | `jex jdk` | mise 模型：声明式钉版 + 跨设备一致 |
+| [已完成] 依赖管理 | `jex add/remove/update` | uv 式体验，底层 Coursier |
+| [已完成] 依赖搜索 | `jex search` | apk 式搜索 Maven Central |
+| [已完成] 一键运行 | `jex run` | 解析 → 编译 → 运行 |
+| [已完成] 脚本模式 | `jex run script.java` | 直接运行单文件 Java 脚本（shebang + 文件内依赖声明 + 缓存编译） |
+| [已完成] JDK 诊断 | `jex java gc/threads/...` | 取代难用的原生工具 |
+| [部分完成] 生态互通 | `jex export/import maven` | 降低退出成本（export 已完成，import 待实现） |
+| [待规划] REPL | `jex repl` | 交互式 Java 代码求值 |
+| [待规划] Shell 补全 | `jex completions` | bash/zsh/fish/powershell 自动补全 |
 
 ## 用户可见流程
 

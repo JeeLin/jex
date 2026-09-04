@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-07-07
+
+### Added
+- 独立编译命令：`jex build` 从 `run` 中提取编译逻辑，支持 `--clean` 清理后重编译
+- 依赖分析：`jex analyze` 检测未使用和未声明的依赖，已知映射表 + 启发式推断
+- 交互式 REPL：`jex repl` 基于 jshell 的交互式 Java 代码求值，自动加载项目依赖
+- Shell 补全：`jex completions <shell>` 生成 bash/zsh/fish/powershell 自动补全脚本
+
+### Changed
+- `compile()` 函数重构：返回 `(PathBuf, String)` 同时提供编译输出目录和 classpath
+- 提取 `build_classpath_vec()` 公共函数，消除 repl.rs 与 run.rs 的 classpath 构建重复
+- 移除 `planned()` 辅助函数，所有 stub 命令已实现
+
+### Fixed
+- `jex build` 文件收集：从通配符 `"*"` 改为递归遍历 src/ 下所有 .java 文件
+- `run()` 编译复用：`run()` 现调用 `compile()` 而非重复编译逻辑
+- REPL 输出读取：从阻塞 `stdout.read()` 改为 `BufReader::read_line()` 避免挂起
+
 ## [0.10.0] - 2026-09-03
 
 ### Added

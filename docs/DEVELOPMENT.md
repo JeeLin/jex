@@ -115,9 +115,9 @@ Phase 0 (地基) → Phase 1 (整合)
 - **版本类型**：minor
 - **版本号**：v0.10.0
 
-### v0.11.0 CLI 增强 ← 新增（下一步）
+### v0.11.0 CLI 增强 ✅ 已完成
 - **核心功能**：补全 stub 命令（build/analyze）、交互式 REPL、shell 自动补全
-- **子任务预估**：4 个（build 编译命令、analyze 依赖分析、repl 交互式求值、completions shell 补全）
+- **子任务**：4 个（build 编译命令、analyze 依赖分析、repl 交互式求值、completions shell 补全）
 - **依赖**：v0.10.0
 - **版本类型**：minor
 - **版本号**：v0.11.0

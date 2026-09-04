@@ -12,3 +12,4 @@ pub mod profiler;
 pub mod jfr;
 pub mod fmt;
 pub mod script;
+pub mod update;

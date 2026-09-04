@@ -80,6 +80,11 @@ enum Commands {
     /// JVM 诊断(gc / threads / heap / 火焰图 / 录制)
     #[command(subcommand)]
     Java(JavaCommand),
+
+    /// 自更新
+    #[command(alias = "su")]
+    #[command(subcommand)]
+    Self_(SelfCommand),
 }
 
 #[derive(Subcommand)]
@@ -113,6 +118,18 @@ enum JavaCommand {
     Top(GcArgs),
 }
 
+#[derive(Subcommand)]
+enum SelfCommand {
+    /// 检查并更新到最新版本
+    Update(SelfUpdateArgs),
+}
+
+#[derive(Args)]
+struct SelfUpdateArgs {
+    /// 仅检查是否有新版本，不执行更新
+    #[arg(long)]
+    check: bool,
+}
 #[derive(Args)]
 struct InitArgs {
     /// 项目名
@@ -396,6 +413,32 @@ fn run(cli: Cli) -> Result<()> {
                 Ok(())
             }
             JavaCommand::Top(a) => diag::top_tui(a.pid),
+        },
+        Commands::Self_(c) => match c {
+            SelfCommand::Update(a) => {
+                use jex_core::update;
+                let current = update::current_version();
+                println!("当前版本: {}", current);
+                println!("正在检查最新版本...");
+                let info = update::check_latest()?;
+                println!("最新版本: {}", info.latest_version);
+                if !update::needs_update(current, &info.latest_version) {
+                    println!("✅ 已是最新版本");
+                    return Ok(());
+                }
+                if a.check {
+                    println!("💡 有新版本可用: {}", info.latest_version);
+                    return Ok(());
+                }
+                println!("📥 正在下载...");
+                let current_path = update::current_binary_path()?;
+                let tmp_path = current_path.with_extension("tmp");
+                update::download_binary(&info.download_url, &tmp_path)?;
+                println!("🔄 正在替换...");
+                update::atomic_replace(&current_path, &tmp_path)?;
+                println!("✅ 更新完成！新版本: {}", info.latest_version);
+                Ok(())
+            }
         },
     }
 }

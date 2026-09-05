@@ -404,4 +404,87 @@ mod tests {
         // 保留现有版本
         assert_eq!(merged.get("com.google.code.gson:gson").unwrap(), "2.10.0");
     }
+
+    #[test]
+    fn test_parse_pom_multiple_deps() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <dependencies>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.11.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.9</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.14.0</version>
+        </dependency>
+    </dependencies>
+</project>"#;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let pom_path = tmp.path().join("pom.xml");
+        std::fs::write(&pom_path, xml).unwrap();
+
+        let deps = parse_pom(&pom_path).unwrap();
+        assert_eq!(deps.len(), 3);
+        assert_eq!(deps[0].artifact_id, "gson");
+        assert_eq!(deps[1].artifact_id, "slf4j-api");
+        assert_eq!(deps[2].artifact_id, "commons-lang3");
+    }
+
+    #[test]
+    fn test_merge_with_existing_add_new() {
+        let imported = vec![
+            "com.google.code.gson:gson:2.11.0".to_string(),
+            "org.slf4j:slf4j-api:2.0.9".to_string(),
+            "org.apache.commons:commons-lang3:3.14.0".to_string(),
+        ];
+        let mut existing = HashMap::new();
+        existing.insert("com.google.code.gson:gson".to_string(), "2.10.0".to_string());
+
+        let merged = merge_with_existing(&imported, &existing);
+        assert_eq!(merged.len(), 3);
+        // 保留现有版本
+        assert_eq!(merged.get("com.google.code.gson:gson").unwrap(), "2.10.0");
+        // 新依赖追加
+        assert_eq!(merged.get("org.slf4j:slf4j-api").unwrap(), "2.0.9");
+        assert_eq!(merged.get("org.apache.commons:commons-lang3").unwrap(), "3.14.0");
+    }
+
+    #[test]
+    #[test]
+    fn test_merge_with_existing_invalid_coord() {
+        let imported = vec!["invalid-coord".to_string()];
+        let existing = HashMap::new();
+
+        let merged = merge_with_existing(&imported, &existing);
+        // 无效坐标被跳过
+        assert!(merged.is_empty());
+    }
+
+    #[test]
+    fn test_parse_pom_missing_dependencies_section() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example</groupId>
+    <artifactId>my-app</artifactId>
+</project>"#;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let pom_path = tmp.path().join("pom.xml");
+        std::fs::write(&pom_path, xml).unwrap();
+
+        let deps = parse_pom(&pom_path).unwrap();
+        // 没有 dependencies 区块，返回空列表
+        assert!(deps.is_empty());
+    }
 }

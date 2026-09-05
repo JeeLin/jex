@@ -1,8 +1,7 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{deps, diag, export, fmt, import, jdk, jfr, profiler, run, search};
+use jex_core::{deps, diag, export, fmt, import, jdk, jfr, profiler, run, search, template};
 use std::path::PathBuf;
-
 #[derive(Parser)]
 #[command(
     name = "jex",
@@ -92,8 +91,11 @@ enum Commands {
     #[command(alias = "su")]
     #[command(subcommand)]
     Self_(SelfCommand),
-}
 
+    /// 创建新项目
+    #[command(alias = "c")]
+    Create(CreateArgs),
+}
 #[derive(Subcommand)]
 enum JdkCommand {
     /// 下载并安装指定版本
@@ -291,6 +293,17 @@ struct ImportArgs {
     path: String,
 }
 
+#[derive(Args)]
+struct CreateArgs {
+    /// 项目名称
+    name: String,
+    /// 模板类型（lib/cli/api/web，默认 lib）
+    #[arg(short, long, default_value = "lib")]
+    template: String,
+    /// 包名（默认 com.example）
+    #[arg(short, long, default_value = "com.example")]
+    package: String,
+}
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
@@ -508,5 +521,6 @@ fn run(cli: Cli) -> Result<()> {
                 Ok(())
             }
         },
+        Commands::Create(a) => template::create_project(&a.name, &a.template, Some(&a.package)),
     }
 }

@@ -1,8 +1,7 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{deps, diag, export, fmt, import, jdk, jfr, outdated, profiler, run, search, template};
+use jex_core::{audit, deps, diag, export, fmt, import, jdk, jfr, outdated, profiler, run, search, template};
 use std::path::PathBuf;
-
 #[derive(Parser)]
 #[command(
     name = "jex",
@@ -101,6 +100,9 @@ enum Commands {
     #[command(alias = "o")]
     Outdated,
 
+    /// 检查依赖安全漏洞
+    #[command(alias = "a")]
+    Audit(AuditArgs),
     /// 升级依赖
     #[command(alias = "u")]
     Upgrade(UpgradeArgs),
@@ -320,6 +322,12 @@ struct UpgradeArgs {
     coord: Option<String>,
 }
 
+#[derive(Args)]
+struct AuditArgs {
+    /// 输出 JSON 格式报告
+    #[arg(long)]
+    json: bool,
+}
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
@@ -551,6 +559,35 @@ fn run(cli: Cli) -> Result<()> {
         Commands::Upgrade(a) => match &a.coord {
             Some(coord) => outdated::upgrade_dep(coord),
             None => outdated::upgrade_all(),
+        },
+        Commands::Audit(a) => {
+            let vulns = audit::check_vulnerabilities()?;
+            let report = audit::generate_report(vulns);
+
+            if a.json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                if report.total_vulnerabilities == 0 {
+                    println!("✅ 未发现安全漏洞");
+                } else {
+                    println!("🔒 发现 {} 个安全漏洞:\n", report.total_vulnerabilities);
+                    println!("  CRITICAL: {}", report.critical);
+                    println!("  HIGH:     {}", report.high);
+                    println!("  MEDIUM:   {}", report.medium);
+                    println!("  LOW:      {}", report.low);
+                    println!();
+
+                    for vuln in &report.vulnerabilities {
+                        println!("  {} [{}] {}:{}", vuln.severity.display(), vuln.cve_id, vuln.group, vuln.artifact);
+                        println!("    {}", vuln.description);
+                        if let Some(suggestion) = audit::get_fix_suggestion(vuln) {
+                            println!("    修复建议: {}", suggestion);
+                        }
+                        println!();
+                    }
+                }
+            }
+            Ok(())
         },
     }
 }

@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-09-05
+
+### Added
+- 生态互通：`jex import maven` 命令从 pom.xml 导入依赖到 jex.toml，完成 export/import 闭环
+- pom.xml 解析引擎：支持 dependencyManagement 版本继承和 scope 过滤
+- 依赖合并：版本冲突时保留现有版本并提示，新依赖追加
+- 单元测试：12 个测试用例覆盖 pom 解析、坐标转换、合并逻辑、错误处理
 ## [0.11.0] - 2026-07-07
 
 ### Added

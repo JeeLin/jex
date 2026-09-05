@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-05
+
+### Added
+- 依赖安全检查：`jex audit` 检查项目依赖是否有已知安全漏洞
+- OSV 数据库集成：查询 Open Source Vulnerabilities 数据库
+- CLI 集成：`jex audit` 命令，支持 --json 输出
 ## [0.14.0] - 2026-09-05
 
 ### Added

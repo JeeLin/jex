@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-09-05
+
+### Added
+- 依赖版本检查：`jex outdated` 检查依赖更新，`jex upgrade` 自动升级依赖
+- 版本查询引擎：通过 Maven Central 查询最新版本
+- CLI 集成：`jex outdated` 和 `jex upgrade` 命令
 ## [0.13.0] - 2026-09-05
 
 ### Added

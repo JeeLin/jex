@@ -1,6 +1,6 @@
 [package]
 name = "jex-cli"
-version = "0.13.0"
+version = "0.14.0"
 edition = "2021"
 description = "jex CLI - JVM toolchain command line interface"
 license = "MIT"

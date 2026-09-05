@@ -15,4 +15,5 @@ pub mod run;
 pub mod script;
 pub mod search;
 pub mod update;
+pub mod template;
 pub mod util;

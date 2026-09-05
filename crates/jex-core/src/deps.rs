@@ -238,9 +238,8 @@ fn resolve_latest_version(coord: &str) -> Result<String> {
 }
 
 /// 更新锁文件（简化实现：只记录直接依赖）
-fn update_lock_file(config: &ProjectConfig) -> Result<()> {
+pub fn update_lock_file(config: &ProjectConfig) -> Result<()> {
     let dependencies = config.dependencies.clone().unwrap_or_default();
-
     let mut lock = LockFile {
         lockfile_version: Some(1),
         dependencies: Some(HashMap::new()),

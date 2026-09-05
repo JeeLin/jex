@@ -16,11 +16,10 @@
 | [已完成] 一键运行 | `jex run` | 解析 → 编译 → 运行 |
 | [已完成] 脚本模式 | `jex run script.java` | 直接运行单文件 Java 脚本（shebang + 文件内依赖声明 + 缓存编译） |
 | [已完成] JDK 诊断 | `jex java gc/threads/...` | 取代难用的原生工具 |
-| [部分完成] 生态互通 | `jex export/import maven` | 降低退出成本（export 已完成，import 待实现） |
-| [待规划] REPL | `jex repl` | 交互式 Java 代码求值 |
-| [待规划] Shell 补全 | `jex completions` | bash/zsh/fish/powershell 自动补全 |
-
-## 用户可见流程
+| [已完成] 生态互通 | `jex export/import maven` | 降低退出成本（export + import 完整闭环，v0.12.0） |
+| [已完成] REPL | `jex repl` | 交互式 Java 代码求值（基于 jshell，v0.11.0） |
+| [已完成] Shell 补全 | `jex completions` | bash/zsh/fish/powershell 自动补全（v0.11.0） |
+| [已规划] 项目模板 | `jex create` | 快速创建项目模板（web/api/cli/lib） |
 
 ### 1. 新项目启动
 ```bash

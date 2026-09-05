@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-09-05
+
+### Added
+- 项目模板：`jex create` 命令支持 4 种模板（lib/cli/api/web），快速创建项目骨架
+- 模板引擎：内置模板内容，支持变量替换（项目名、包名）
+- CLI 集成：`jex create <name> --template <type> --package <pkg>`
+- 单元测试：5 个测试用例覆盖模板查询、变量替换、项目创建
 ## [0.12.0] - 2026-09-05
 
 ### Added

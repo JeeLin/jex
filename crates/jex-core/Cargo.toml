@@ -1,9 +1,10 @@
 [package]
 name = "jex-core"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 description = "jex core library - JVM toolchain logic"
 license = "MIT"
+
 [dependencies]
 toml.workspace = true
 serde.workspace = true

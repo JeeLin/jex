@@ -19,8 +19,8 @@
 | [已完成] 生态互通 | `jex export/import maven` | 降低退出成本（export + import 完整闭环，v0.12.0） |
 | [已完成] REPL | `jex repl` | 交互式 Java 代码求值（基于 jshell，v0.11.0） |
 | [已完成] Shell 补全 | `jex completions` | bash/zsh/fish/powershell 自动补全（v0.11.0） |
-| [已规划] 项目模板 | `jex create` | 快速创建项目模板（web/api/cli/lib） |
-
+| [已完成] 项目模板 | `jex create` | 快速创建项目模板（web/api/cli/lib，v0.13.0） |
+| [待规划] 依赖版本检查 | `jex outdated/upgrade` | 检查依赖更新并自动升级 |
 ### 1. 新项目启动
 ```bash
 jex init --name demo        # 生成 jex.toml + src/

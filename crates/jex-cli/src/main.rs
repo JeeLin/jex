@@ -1,7 +1,8 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{deps, diag, export, fmt, import, jdk, jfr, profiler, run, search, template};
+use jex_core::{deps, diag, export, fmt, import, jdk, jfr, outdated, profiler, run, search, template};
 use std::path::PathBuf;
+
 #[derive(Parser)]
 #[command(
     name = "jex",
@@ -95,6 +96,14 @@ enum Commands {
     /// 创建新项目
     #[command(alias = "c")]
     Create(CreateArgs),
+
+    /// 检查依赖更新
+    #[command(alias = "o")]
+    Outdated,
+
+    /// 升级依赖
+    #[command(alias = "u")]
+    Upgrade(UpgradeArgs),
 }
 #[derive(Subcommand)]
 enum JdkCommand {
@@ -304,6 +313,13 @@ struct CreateArgs {
     #[arg(short, long, default_value = "com.example")]
     package: String,
 }
+
+#[derive(Args)]
+struct UpgradeArgs {
+    /// 依赖坐标（留空则升级全部）
+    coord: Option<String>,
+}
+
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
@@ -522,5 +538,19 @@ fn run(cli: Cli) -> Result<()> {
             }
         },
         Commands::Create(a) => template::create_project(&a.name, &a.template, Some(&a.package)),
+        Commands::Outdated => outdated::check_outdated().map(|deps| {
+            if deps.is_empty() {
+                println!("✅ 所有依赖已是最新版本");
+            } else {
+                println!("📦 找到 {} 个可更新依赖:\n", deps.len());
+                for dep in &deps {
+                    println!("  {}:{}: {} → {}", dep.group, dep.artifact, dep.current, dep.latest);
+                }
+            }
+        }),
+        Commands::Upgrade(a) => match &a.coord {
+            Some(coord) => outdated::upgrade_dep(coord),
+            None => outdated::upgrade_all(),
+        },
     }
 }

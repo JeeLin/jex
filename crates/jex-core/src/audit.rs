@@ -6,15 +6,36 @@ use crate::error::Result;
 use serde::{Deserialize, Serialize};
 
 /// 严重程度
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Severity {
-    Critical,
-    High,
-    Medium,
     Low,
+    Medium,
+    High,
+    Critical,
+}
+
+impl PartialOrd for Severity {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Severity {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.priority().cmp(&other.priority())
+    }
 }
 
 impl Severity {
+    fn priority(&self) -> u8 {
+        match self {
+            Severity::Low => 0,
+            Severity::Medium => 1,
+            Severity::High => 2,
+            Severity::Critical => 3,
+        }
+    }
+
     pub fn color(&self) -> &'static str {
         match self {
             Severity::Critical | Severity::High => "\x1b[31m",  // 红色

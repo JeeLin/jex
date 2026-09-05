@@ -1,4 +1,5 @@
 pub mod analyze;
+pub mod audit;
 pub mod config;
 pub mod deps;
 pub mod diag;

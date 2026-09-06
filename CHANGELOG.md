@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-05
+
+### Added
+- 依赖树可视化：`jex tree` 以树状结构显示项目依赖层级
+- 深度限制：支持 --depth N 参数限制显示深度
+- JSON 输出：支持 --json 参数输出 JSON 格式
+- CLI 集成：`jex tree` 命令，支持 --depth 和 --json 标志
 ## [0.16.0] - 2026-09-05
 
 ### Added

@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-05
+
+### Added
+- 依赖许可证检查：`jex license` 检查项目依赖的许可证类型和合规性
+- SPDX 支持：支持标准 SPDX 许可证标识符
+- 合规性分析：检测 GPL 冲突和许可证互斥
+- CLI 集成：`jex license` 命令，支持 --json 和 --check 输出
 ## [0.15.0] - 2026-09-05
 
 ### Added

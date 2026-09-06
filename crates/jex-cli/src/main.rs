@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{audit, deps, diag, export, fmt, import, jdk, jfr, license, outdated, pin, profiler, report, run, search, template, tree};
+use jex_core::{audit, cache, deps, diag, export, fmt, import, jdk, jfr, license, outdated, pin, profiler, report, run, search, template, tree};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -119,6 +119,10 @@ enum Commands {
     /// 锁定依赖版本
     #[command(alias = "p")]
     Pin(PinArgs),
+
+    /// 管理依赖缓存
+    #[command(alias = "c")]
+    Cache(CacheArgs),
 }
 #[derive(Subcommand)]
 enum JdkCommand {
@@ -387,6 +391,26 @@ struct PinArgs {
     unpin: Option<String>,
 }
 
+#[derive(Args)]
+struct CacheArgs {
+    /// 清理缓存
+    #[command(subcommand)]
+    command: CacheCommand,
+}
+
+#[derive(Subcommand)]
+enum CacheCommand {
+    /// 清理缓存
+    Clean {
+        /// 清理全局缓存
+        #[arg(long)]
+        global: bool,
+    },
+    /// 显示缓存内容
+    List,
+    /// 显示缓存路径
+    Path,
+}
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
@@ -501,6 +525,26 @@ fn run(cli: Cli) -> Result<()> {
             }
         },
         Commands::Why(a) => deps::why(&a.coord),
+        Commands::Cache(a) => match &a.command {
+            CacheCommand::Clean { global } => cache::clean_cache(*global),
+            CacheCommand::List => {
+                let entries = cache::list_cache()?;
+                if entries.is_empty() {
+                    println!("缓存为空");
+                } else {
+                    println!("缓存内容:");
+                    for entry in &entries {
+                        println!("  {} ({})", entry.name, format_size(entry.size));
+                    }
+                }
+                Ok(())
+            }
+            CacheCommand::Path => {
+                let path = cache::cache_path()?;
+                println!("{}", path.display());
+                Ok(())
+            }
+        },
         Commands::Conflict => deps::conflict(),
         Commands::Analyze => {
             use jex_core::analyze;
@@ -732,5 +776,17 @@ fn run(cli: Cli) -> Result<()> {
             }
             Ok(())
         },
+    }
+}
+
+fn format_size(bytes: u64) -> String {
+    if bytes < 1024 {
+        format!("{} B", bytes)
+    } else if bytes < 1024 * 1024 {
+        format!("{:.1} KB", bytes as f64 / 1024.0)
+    } else if bytes < 1024 * 1024 * 1024 {
+        format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+    } else {
+        format!("{:.1} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
     }
 }

@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{audit, cache, deps, diag, export, fmt, import, jdk, jfr, license, outdated, pin, profiler, report, run, search, template, tree};
+use jex_core::{audit, cache, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -123,6 +123,10 @@ enum Commands {
     /// 管理依赖缓存
     #[command(alias = "c")]
     Cache(CacheArgs),
+
+    /// 检查依赖许可证合规性
+    #[command(alias = "lc")]
+    LicenseCheck,
 }
 #[derive(Subcommand)]
 enum JdkCommand {
@@ -544,6 +548,27 @@ fn run(cli: Cli) -> Result<()> {
                 println!("{}", path.display());
                 Ok(())
             }
+        },
+        Commands::LicenseCheck => {
+            let report = license_check::check_all_licenses()?;
+            println!("📋 许可证合规性报告");
+            println!("═══════════════════════════════════════");
+            println!("✅ 兼容: {} 个", report.compatible.len());
+            println!("❌ 不兼容: {} 个", report.incompatible.len());
+            println!("❓ 未知: {} 个", report.unknown.len());
+            if !report.incompatible.is_empty() {
+                println!("\n不兼容的依赖:");
+                for dep in &report.incompatible {
+                    println!("  {}", dep);
+                }
+            }
+            if !report.unknown.is_empty() {
+                println!("\n未知许可证的依赖:");
+                for dep in &report.unknown {
+                    println!("  {}", dep);
+                }
+            }
+            Ok(())
         },
         Commands::Conflict => deps::conflict(),
         Commands::Analyze => {

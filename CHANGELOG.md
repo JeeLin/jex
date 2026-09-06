@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-05
+
+### Added
+- 依赖缓存管理：`jex cache` 管理依赖缓存
+- 清理缓存：`jex cache clean` 清理项目缓存
+- 全局清理：`jex cache clean --global` 清理全局缓存
+- 缓存列表：`jex cache list` 显示缓存内容
+- 缓存路径：`jex cache path` 显示缓存路径
 ## [0.19.0] - 2026-09-05
 
 ### Added

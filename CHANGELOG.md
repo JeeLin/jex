@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-09-05
+
+### Added
+- 依赖版本锁定：`jex pin` 锁定特定依赖版本
+- 锁定全部：`jex pin --all` 锁定所有依赖
+- 锁定列表：`jex pin --list` 显示锁定状态
+- 解锁依赖：`jex pin --unpin <coord>` 解锁指定依赖
 ## [0.18.0] - 2026-09-05
 
 ### Added

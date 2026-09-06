@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{audit, deps, diag, export, fmt, import, jdk, jfr, license, outdated, profiler, report, run, search, template, tree};
+use jex_core::{audit, deps, diag, export, fmt, import, jdk, jfr, license, outdated, pin, profiler, report, run, search, template, tree};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -115,6 +115,10 @@ enum Commands {
     /// 生成项目依赖分析报告
     #[command(alias = "r")]
     Report(ReportArgs),
+
+    /// 锁定依赖版本
+    #[command(alias = "p")]
+    Pin(PinArgs),
 }
 #[derive(Subcommand)]
 enum JdkCommand {
@@ -364,6 +368,25 @@ struct ReportArgs {
     #[arg(long)]
     json: bool,
 }
+
+#[derive(Args)]
+struct PinArgs {
+    /// 依赖坐标（如 com.google.code.gson:gson）
+    coord: Option<String>,
+
+    /// 锁定所有依赖
+    #[arg(long)]
+    all: bool,
+
+    /// 显示锁定状态
+    #[arg(long)]
+    list: bool,
+
+    /// 解锁指定依赖
+    #[arg(long)]
+    unpin: Option<String>,
+}
+
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
@@ -453,6 +476,29 @@ fn run(cli: Cli) -> Result<()> {
                 println!("{}", output);
             }
             Ok(())
+        },
+        Commands::Pin(a) => {
+            if a.list {
+                let pinned = pin::list_pinned()?;
+                if pinned.is_empty() {
+                    println!("没有锁定的依赖");
+                } else {
+                    println!("锁定的依赖:");
+                    for dep in &pinned {
+                        println!("  {}:{}", dep.coord, dep.version);
+                    }
+                }
+                Ok(())
+            } else if let Some(unpin_coord) = &a.unpin {
+                pin::unpin_dependency(unpin_coord)
+            } else if a.all {
+                pin::pin_all()
+            } else if let Some(coord) = &a.coord {
+                pin::pin_dependency(coord)
+            } else {
+                eprintln!("请指定依赖坐标或使用 --all/--list/--unpin");
+                std::process::exit(1);
+            }
         },
         Commands::Why(a) => deps::why(&a.coord),
         Commands::Conflict => deps::conflict(),

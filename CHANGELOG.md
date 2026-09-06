@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-05
+
+### Added
+- 依赖许可证自动检查：`jex license-check` 自动检查依赖许可证合规性
+- 许可证白名单：支持宽松和弱 copyleft 许可证
+- 合规性报告：显示兼容/不兼容/未知许可证的依赖
 ## [0.20.0] - 2026-09-05
 
 ### Added

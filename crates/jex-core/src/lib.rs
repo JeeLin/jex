@@ -9,6 +9,7 @@ pub mod fmt;
 pub mod import;
 pub mod jdk;
 pub mod jfr;
+pub mod license;
 pub mod outdated;
 pub mod profiler;
 pub mod repl;

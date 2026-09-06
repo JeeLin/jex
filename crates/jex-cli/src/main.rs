@@ -1,7 +1,8 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{audit, deps, diag, export, fmt, import, jdk, jfr, license, outdated, profiler, run, search, template, tree};
+use jex_core::{audit, deps, diag, export, fmt, import, jdk, jfr, license, outdated, profiler, report, run, search, template, tree};
 use std::path::PathBuf;
+
 #[derive(Parser)]
 #[command(
     name = "jex",
@@ -110,6 +111,10 @@ enum Commands {
     /// 检查依赖许可证
     #[command(alias = "l")]
     License(LicenseArgs),
+
+    /// 生成项目依赖分析报告
+    #[command(alias = "r")]
+    Report(ReportArgs),
 }
 #[derive(Subcommand)]
 enum JdkCommand {
@@ -353,6 +358,12 @@ struct TreeArgs {
     json: bool,
 }
 
+#[derive(Args)]
+struct ReportArgs {
+    /// 输出 JSON 格式报告
+    #[arg(long)]
+    json: bool,
+}
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
@@ -428,6 +439,17 @@ fn run(cli: Cli) -> Result<()> {
                 println!("{}", serde_json::to_string_pretty(&tree)?);
             } else {
                 let output = tree::render_tree(&tree, a.depth);
+                println!("{}", output);
+            }
+            Ok(())
+        },
+        Commands::Report(a) => {
+            let report = report::generate_report()?;
+
+            if a.json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                let output = report::render_report(&report);
                 println!("{}", output);
             }
             Ok(())

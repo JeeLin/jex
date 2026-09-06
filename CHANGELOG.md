@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-09-05
+
+### Added
+- 项目依赖分析报告：`jex report` 生成项目依赖综合分析报告
+- 整合分析：整合 outdated、audit、license、tree 的分析结果
+- JSON 输出：支持 --json 参数输出 JSON 格式
+- CLI 集成：`jex report` 命令，支持 --json 标志
 ## [0.17.0] - 2026-09-05
 
 ### Added

@@ -11,6 +11,7 @@ pub mod import;
 pub mod jdk;
 pub mod jfr;
 pub mod license;
+pub mod license_check;
 pub mod outdated;
 pub mod pin;
 pub mod profiler;

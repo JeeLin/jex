@@ -1,7 +1,8 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{audit, deps, diag, export, fmt, import, jdk, jfr, outdated, profiler, run, search, template};
+use jex_core::{audit, deps, diag, export, fmt, import, jdk, jfr, license, outdated, profiler, run, search, template};
 use std::path::PathBuf;
+
 #[derive(Parser)]
 #[command(
     name = "jex",
@@ -106,6 +107,10 @@ enum Commands {
     /// 升级依赖
     #[command(alias = "u")]
     Upgrade(UpgradeArgs),
+
+    /// 检查依赖许可证
+    #[command(alias = "l")]
+    License(LicenseArgs),
 }
 #[derive(Subcommand)]
 enum JdkCommand {
@@ -328,6 +333,17 @@ struct AuditArgs {
     #[arg(long)]
     json: bool,
 }
+
+#[derive(Args)]
+struct LicenseArgs {
+    /// 输出 JSON 格式报告
+    #[arg(long)]
+    json: bool,
+    /// 仅检查合规性
+    #[arg(long)]
+    check: bool,
+}
+
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
@@ -584,6 +600,46 @@ fn run(cli: Cli) -> Result<()> {
                             println!("    修复建议: {}", suggestion);
                         }
                         println!();
+                    }
+                }
+            }
+            Ok(())
+        },
+        Commands::License(a) => {
+            let licenses = license::check_licenses()?;
+            let report = license::analyze_compatibility(&licenses);
+
+            if a.json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else if a.check {
+                if report.compatible {
+                    println!("✅ 许可证兼容性检查通过");
+                } else {
+                    println!("❌ 许可证兼容性检查失败");
+                    for conflict in &report.conflicts {
+                        println!("  冲突: {} vs {} - {}", conflict.license1, conflict.license2, conflict.reason);
+                    }
+                }
+                for warning in &report.warnings {
+                    println!("  ⚠️  {}", warning);
+                }
+            } else {
+                println!("📋 许可证分布:\n");
+                println!("  总计: {} 个依赖", report.summary.total_dependencies);
+                println!("  宽松: {}", report.summary.permissive);
+                println!("  弱 copyleft: {}", report.summary.weak_copyleft);
+                println!("  强 copyleft: {}", report.summary.strong_copyleft);
+                println!("  未知: {}", report.summary.unknown);
+                println!();
+
+                for (license, count) in &report.summary.license_counts {
+                    println!("  {}: {} 个", license, count);
+                }
+
+                if !report.warnings.is_empty() {
+                    println!("\n⚠️  警告:");
+                    for warning in &report.warnings {
+                        println!("  {}", warning);
                     }
                 }
             }

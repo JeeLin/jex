@@ -3,10 +3,11 @@
 //! - upgrade: 升级指定或全部依赖
 
 use crate::deps;
+use serde::{Deserialize, Serialize};
 use crate::error::Result;
 use crate::resolver;
 /// 过时的依赖信息
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutdatedDep {
     pub group: String,
     pub artifact: String,

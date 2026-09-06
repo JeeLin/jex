@@ -1,8 +1,7 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{audit, deps, diag, export, fmt, import, jdk, jfr, license, outdated, profiler, run, search, template};
+use jex_core::{audit, deps, diag, export, fmt, import, jdk, jfr, license, outdated, profiler, run, search, template, tree};
 use std::path::PathBuf;
-
 #[derive(Parser)]
 #[command(
     name = "jex",
@@ -51,7 +50,7 @@ enum Commands {
 
     /// 依赖树
     #[command(alias = "t")]
-    Tree,
+    Tree(TreeArgs),
 
     /// 为何引入某依赖
     #[command(alias = "w")]
@@ -344,6 +343,16 @@ struct LicenseArgs {
     check: bool,
 }
 
+#[derive(Args)]
+struct TreeArgs {
+    /// 显示深度限制
+    #[arg(short, long)]
+    depth: Option<usize>,
+    /// 输出 JSON 格式
+    #[arg(long)]
+    json: bool,
+}
+
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
@@ -412,7 +421,17 @@ fn run(cli: Cli) -> Result<()> {
             println!("✅ Build complete → {}", build.display());
             Ok(())
         }
-        Commands::Tree => deps::tree(),
+        Commands::Tree(a) => {
+            let tree = tree::build_dependency_tree()?;
+
+            if a.json {
+                println!("{}", serde_json::to_string_pretty(&tree)?);
+            } else {
+                let output = tree::render_tree(&tree, a.depth);
+                println!("{}", output);
+            }
+            Ok(())
+        },
         Commands::Why(a) => deps::why(&a.coord),
         Commands::Conflict => deps::conflict(),
         Commands::Analyze => {

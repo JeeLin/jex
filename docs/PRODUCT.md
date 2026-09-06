@@ -22,8 +22,8 @@
 | [已完成] 项目模板 | `jex create` | 快速创建项目模板（web/api/cli/lib，v0.13.0） |
 | [已完成] 依赖版本检查 | `jex outdated/upgrade` | 检查依赖更新并自动升级（v0.14.0） |
 | [已完成] 依赖安全检查 | `jex audit` | 检查依赖已知漏洞（v0.15.0） |
-| [待规划] 依赖许可证检查 | `jex license` | 检查依赖许可证合规性 |
-jex init --name demo        # 生成 jex.toml + src/
+| [已完成] 依赖许可证检查 | `jex license` | 检查依赖许可证合规性（v0.16.0） |
+| [待规划] 依赖树可视化 | `jex tree` | 可视化项目依赖树结构 |
 jex add com.google.code.gson:gson:2.11.0  # 添加依赖
 ```
 

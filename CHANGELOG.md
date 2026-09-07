@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+## [0.27.0] - 2026-09-07
+
+### Added
+- Monorepo 支持：`jex workspace` 多模块项目统一管理（init/list/status/build）
+- 工作区配置：`jex-workspace.toml` 声明模块路径（支持 glob 模式）
+- 模块发现：自动扫描工作区内含 jex.toml 的子目录
+- 状态汇总：显示各模块依赖数量和总依赖数
+
 ## [0.26.0] - 2026-09-07
 
 ### Added

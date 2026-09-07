@@ -1,9 +1,9 @@
 [package]
 name = "jex-cli"
-version = "0.24.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "jex CLI - JVM toolchain command line interface"
-license = "MIT"
+license.workspace = true
 
 [[bin]]
 name = "jex"

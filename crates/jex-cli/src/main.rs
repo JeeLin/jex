@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{tree_verbose, watch, audit, audit_fix, cache, changelog, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
+use jex_core::{tree_verbose, watch, workspace, audit, audit_fix, cache, changelog, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -135,6 +135,10 @@ enum Commands {
     /// 依赖版本变更日志
     #[command(alias = "cl")]
     Changelog,
+
+    /// 多模块工作区管理
+    #[command(subcommand)]
+    Workspace(WorkspaceCommand),
 
     /// 热重载：监听文件变更自动编译运行
     #[command(alias = "w")]
@@ -389,6 +393,18 @@ struct TreeArgs {
     /// 按名称/许可证/漏洞过滤依赖
     #[arg(short, long)]
     filter: Option<String>,
+}
+
+#[derive(Subcommand)]
+enum WorkspaceCommand {
+    /// 初始化工作区（创建 jex-workspace.toml）
+    Init,
+    /// 列出工作区模块
+    List,
+    /// 显示工作区状态汇总
+    Status,
+    /// 批量编译所有模块
+    Build,
 }
 
 #[derive(Args)]
@@ -906,6 +922,71 @@ fn run(cli: Cli) -> Result<()> {
                 }
             }
             Ok(())
+        }
+        Commands::Workspace(cmd) => {
+            let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+            match cmd {
+                WorkspaceCommand::Init => {
+                    let path = workspace::workspace_init(&cwd)?;
+                    println!("✅ 工作区已初始化: {}", path.display());
+                    Ok(())
+                }
+                WorkspaceCommand::List => {
+                    let root = workspace::find_workspace_root(&cwd)
+                        .ok_or_else(|| jex_core::error::Error::new("未找到工作区（缺少 jex-workspace.toml）"))?;
+                    let config = workspace::parse_workspace_config(&root)?;
+                    let modules = workspace::discover_modules(&root, &config)?;
+                    if modules.is_empty() {
+                        println!("工作区中没有模块");
+                    } else {
+                        println!("📦 工作区模块 ({} 个):\n", modules.len());
+                        for m in &modules {
+                            println!("  {} ({})", m.name, m.path.display());
+                            println!("    依赖: {} 个", m.dependencies_count);
+                        }
+                    }
+                    Ok(())
+                }
+                WorkspaceCommand::Status => {
+                    let root = workspace::find_workspace_root(&cwd)
+                        .ok_or_else(|| jex_core::error::Error::new("未找到工作区（缺少 jex-workspace.toml）"))?;
+                    let status = workspace::workspace_status(&root)?;
+                    println!("📊 工作区状态: {}", status.root.display());
+                    println!("   模块数: {}", status.modules.len());
+                    println!("   总依赖: {}\n", status.total_dependencies);
+                    for m in &status.modules {
+                        println!("  📦 {} — {} 个依赖", m.name, m.dependencies_count);
+                    }
+                    Ok(())
+                }
+                WorkspaceCommand::Build => {
+                    let root = workspace::find_workspace_root(&cwd)
+                        .ok_or_else(|| jex_core::error::Error::new("未找到工作区（缺少 jex-workspace.toml）"))?;
+                    let config = workspace::parse_workspace_config(&root)?;
+                    let modules = workspace::discover_modules(&root, &config)?;
+                    println!("🔨 编译 {} 个模块...\n", modules.len());
+                    let mut failed = 0;
+                    for m in &modules {
+                        print!("  编译 {} ... ", m.name);
+                        let status = std::process::Command::new("cargo")
+                            .arg("check")
+                            .current_dir(&m.path)
+                            .status();
+                        match status {
+                            Ok(s) if s.success() => println!("✅"),
+                            _ => {
+                                println!("❌");
+                                failed += 1;
+                            }
+                        }
+                    }
+                    println!("\n完成: {} 个模块, {} 个失败", modules.len(), failed);
+                    if failed > 0 {
+                        return Err(jex_core::error::Error::new(format!("{} 个模块编译失败", failed)));
+                    }
+                    Ok(())
+                }
+            }
         }
         Commands::Watch(a) => {
             let config = watch::WatchConfig {

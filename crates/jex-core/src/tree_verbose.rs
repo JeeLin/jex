@@ -145,7 +145,10 @@ pub fn render_verbose(report: &TreeReport) -> String {
 
         // 漏洞信息
         if node.vulnerabilities.is_empty() {
-            output.push_str(&format!("{}   🛡️  No known vulnerabilities\n", child_prefix));
+            output.push_str(&format!(
+                "{}   🛡️  No known vulnerabilities\n",
+                child_prefix
+            ));
         } else {
             for vuln in &node.vulnerabilities {
                 let sev_emoji = match vuln.severity.as_str() {
@@ -187,7 +190,8 @@ pub fn render_verbose(report: &TreeReport) -> String {
     ));
 
     // 许可证分布
-    let mut license_dist: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut license_dist: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
     for node in &report.nodes {
         *license_dist
             .entry(node.license_category.clone())

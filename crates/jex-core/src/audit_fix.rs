@@ -41,7 +41,7 @@ pub fn audit_with_fix() -> Result<AuditFixReport> {
         // 检查是否有已知漏洞
         if let Some(vuln) = check_vulnerability(coord, version) {
             vulnerabilities.push(vuln.clone());
-            
+
             // 生成修复建议
             if let Some(fix) = generate_fix_suggestion(coord, version, &vuln) {
                 fixes.push(fix);
@@ -80,12 +80,14 @@ fn generate_fix_suggestion(
     current_version: &str,
     vuln: &Vulnerability,
 ) -> Option<FixSuggestion> {
-    vuln.fixed_version.as_ref().map(|fixed_version| FixSuggestion {
-        dependency: coord.to_string(),
-        current_version: current_version.to_string(),
-        suggested_version: fixed_version.clone(),
-        reason: vuln.description.clone(),
-    })
+    vuln.fixed_version
+        .as_ref()
+        .map(|fixed_version| FixSuggestion {
+            dependency: coord.to_string(),
+            current_version: current_version.to_string(),
+            suggested_version: fixed_version.clone(),
+            reason: vuln.description.clone(),
+        })
 }
 
 #[cfg(test)]

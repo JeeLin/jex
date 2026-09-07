@@ -103,10 +103,7 @@ fn extract_license_from_pom(pom_content: &str) -> Option<String> {
         // 尝试提取 SPDX 标识符
         let start_tag = "<url>";
         let end_tag = "</url>";
-        if let (Some(start), Some(end)) = (
-            pom_content.find(start_tag),
-            pom_content.find(end_tag),
-        ) {
+        if let (Some(start), Some(end)) = (pom_content.find(start_tag), pom_content.find(end_tag)) {
             let url = &pom_content[start + start_tag.len()..end];
             if url.contains("spdx.org") {
                 // 提取 SPDX 标识符
@@ -208,13 +205,19 @@ mod tests {
     #[test]
     fn test_extract_license_from_pom_apache() {
         let pom = r#"<license><name>Apache License, Version 2.0</name></license>"#;
-        assert_eq!(extract_license_from_pom(pom), Some("Apache-2.0".to_string()));
+        assert_eq!(
+            extract_license_from_pom(pom),
+            Some("Apache-2.0".to_string())
+        );
     }
 
     #[test]
     fn test_extract_license_from_pom_bsd() {
         let pom = r#"<license><name>BSD License</name></license>"#;
-        assert_eq!(extract_license_from_pom(pom), Some("BSD-3-Clause".to_string()));
+        assert_eq!(
+            extract_license_from_pom(pom),
+            Some("BSD-3-Clause".to_string())
+        );
     }
 
     #[test]

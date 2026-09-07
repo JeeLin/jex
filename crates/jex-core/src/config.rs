@@ -149,7 +149,10 @@ name = "my-app"
         let result = read_fmt_config();
         std::env::set_current_dir(&orig).unwrap();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("解析 jex.toml 失败"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("解析 jex.toml 失败"));
     }
 
     #[test]

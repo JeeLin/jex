@@ -54,15 +54,18 @@ pub fn start_repl(class_only: bool) -> Result<()> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    let mut child = cmd.spawn().map_err(|e| {
-        Error::new(format!(
-            "启动 jshell 失败: {}（需要 JDK 9+）",
-            e
-        ))
-    })?;
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| Error::new(format!("启动 jshell 失败: {}（需要 JDK 9+）", e)))?;
 
-    let stdin = child.stdin.as_mut().ok_or_else(|| Error::new("无法获取 jshell stdin"))?;
-    let mut stdout = child.stdout.take().ok_or_else(|| Error::new("无法获取 jshell stdout"))?;
+    let stdin = child
+        .stdin
+        .as_mut()
+        .ok_or_else(|| Error::new("无法获取 jshell stdin"))?;
+    let mut stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| Error::new("无法获取 jshell stdout"))?;
 
     // 5. 交互循环
     use std::io::BufRead;

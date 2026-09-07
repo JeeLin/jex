@@ -36,7 +36,10 @@ pub fn check_compatibility() -> Result<CompatibilityReport> {
         let parts: Vec<&str> = coord.split(':').collect();
         if parts.len() == 2 {
             let artifact = parts[1].to_string();
-            version_map.entry(artifact).or_default().push(version.clone());
+            version_map
+                .entry(artifact)
+                .or_default()
+                .push(version.clone());
         }
     }
 
@@ -44,7 +47,11 @@ pub fn check_compatibility() -> Result<CompatibilityReport> {
     for (artifact, versions) in &version_map {
         if versions.len() > 1 {
             // 检查是否是同一版本
-            let unique_versions: Vec<&String> = versions.iter().collect::<std::collections::HashSet<_>>().into_iter().collect();
+            let unique_versions: Vec<&String> = versions
+                .iter()
+                .collect::<std::collections::HashSet<_>>()
+                .into_iter()
+                .collect();
             if unique_versions.len() > 1 {
                 conflicts.push(VersionConflict {
                     dependency: artifact.clone(),

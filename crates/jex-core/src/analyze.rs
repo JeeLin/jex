@@ -141,22 +141,43 @@ fn import_to_coord(import: &str) -> Option<String> {
     // 常见映射表
     let known_mappings: HashMap<&str, &str> = HashMap::from([
         ("com.google.gson", "com.google.code.gson:gson"),
-        ("org.apache.commons.lang3", "org.apache.commons:commons-lang3"),
+        (
+            "org.apache.commons.lang3",
+            "org.apache.commons:commons-lang3",
+        ),
         ("org.apache.commons.lang", "commons-lang:commons-lang"),
         ("org.slf4j", "org.slf4j:slf4j-api"),
         ("org.junit.jupiter", "org.junit.jupiter:junit-jupiter"),
         ("org.junit", "junit:junit"),
         ("org.mockito", "org.mockito:mockito-core"),
-        ("com.fasterxml.jackson", "com.fasterxml.jackson.core:jackson-databind"),
-        ("com.fasterxml.jackson.annotation", "com.fasterxml.jackson.core:jackson-annotations"),
-        ("com.fasterxml.jackson.databind", "com.fasterxml.jackson.core:jackson-databind"),
+        (
+            "com.fasterxml.jackson",
+            "com.fasterxml.jackson.core:jackson-databind",
+        ),
+        (
+            "com.fasterxml.jackson.annotation",
+            "com.fasterxml.jackson.core:jackson-annotations",
+        ),
+        (
+            "com.fasterxml.jackson.databind",
+            "com.fasterxml.jackson.core:jackson-databind",
+        ),
         ("org.springframework", "org.springframework:spring-core"),
-        ("org.springframework.boot", "org.springframework.boot:spring-boot"),
+        (
+            "org.springframework.boot",
+            "org.springframework.boot:spring-boot",
+        ),
         ("io.netty", "io.netty:netty-all"),
-        ("org.apache.httpcomponents", "org.apache.httpcomponents:httpclient"),
+        (
+            "org.apache.httpcomponents",
+            "org.apache.httpcomponents:httpclient",
+        ),
         ("org.json", "org.json:json"),
         ("com.squareup.okhttp3", "com.squareup.okhttp3:okhttp"),
-        ("org.apache.logging.log4j", "org.apache.logging.log4j:log4j-core"),
+        (
+            "org.apache.logging.log4j",
+            "org.apache.logging.log4j:log4j-core",
+        ),
         ("jakarta.servlet", "jakarta.servlet:jakarta.servlet-api"),
         ("javax.servlet", "javax.servlet:javax.servlet-api"),
         ("com.mysql", "com.mysql:mysql-connector-j"),

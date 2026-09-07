@@ -9,10 +9,10 @@ use std::collections::HashMap;
 /// 许可证分类
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum LicenseCategory {
-    Permissive,    // 宽松许可证（MIT, Apache-2.0, BSD）
-    WeakCopyleft,  // 弱 copyleft（LGPL, MPL-2.0）
+    Permissive,     // 宽松许可证（MIT, Apache-2.0, BSD）
+    WeakCopyleft,   // 弱 copyleft（LGPL, MPL-2.0）
     StrongCopyleft, // 强 copyleft（GPL, AGPL）
-    Unknown,       // 未知许可证
+    Unknown,        // 未知许可证
 }
 
 impl LicenseCategory {
@@ -167,7 +167,9 @@ fn normalize_spdx_id(license: &str) -> String {
         "gpl v3" | "gpl-3.0" | "gnu general public license v3" => "GPL-3.0".to_string(),
         "gpl v2" | "gpl-2.0" | "gnu general public license v2" => "GPL-2.0".to_string(),
         "lgpl v3" | "lgpl-3.0" | "gnu lesser general public license v3" => "LGPL-3.0".to_string(),
-        "lgpl v2.1" | "lgpl-2.1" | "gnu lesser general public license v2.1" => "LGPL-2.1".to_string(),
+        "lgpl v2.1" | "lgpl-2.1" | "gnu lesser general public license v2.1" => {
+            "LGPL-2.1".to_string()
+        }
         "epl 2.0" | "eclipse public license 2.0" => "EPL-2.0".to_string(),
         "mpl 2.0" | "mozilla public license 2.0" => "MPL-2.0".to_string(),
         _ => license.to_string(),
@@ -180,12 +182,8 @@ fn categorize_license(spdx_id: &str) -> LicenseCategory {
         "MIT" | "Apache-2.0" | "BSD-2-Clause" | "BSD-3-Clause" | "ISC" | "0BSD" => {
             LicenseCategory::Permissive
         }
-        "LGPL-2.1" | "LGPL-3.0" | "MPL-2.0" | "EPL-2.0" => {
-            LicenseCategory::WeakCopyleft
-        }
-        "GPL-2.0" | "GPL-3.0" | "AGPL-3.0" => {
-            LicenseCategory::StrongCopyleft
-        }
+        "LGPL-2.1" | "LGPL-3.0" | "MPL-2.0" | "EPL-2.0" => LicenseCategory::WeakCopyleft,
+        "GPL-2.0" | "GPL-3.0" | "AGPL-3.0" => LicenseCategory::StrongCopyleft,
         _ => LicenseCategory::Unknown,
     }
 }
@@ -237,10 +235,22 @@ pub fn analyze_compatibility(licenses: &[LicenseInfo]) -> ComplianceReport {
 
     let summary = LicenseSummary {
         total_dependencies: licenses.len(),
-        permissive: licenses.iter().filter(|l| l.category == LicenseCategory::Permissive).count(),
-        weak_copyleft: licenses.iter().filter(|l| l.category == LicenseCategory::WeakCopyleft).count(),
-        strong_copyleft: licenses.iter().filter(|l| l.category == LicenseCategory::StrongCopyleft).count(),
-        unknown: licenses.iter().filter(|l| l.category == LicenseCategory::Unknown).count(),
+        permissive: licenses
+            .iter()
+            .filter(|l| l.category == LicenseCategory::Permissive)
+            .count(),
+        weak_copyleft: licenses
+            .iter()
+            .filter(|l| l.category == LicenseCategory::WeakCopyleft)
+            .count(),
+        strong_copyleft: licenses
+            .iter()
+            .filter(|l| l.category == LicenseCategory::StrongCopyleft)
+            .count(),
+        unknown: licenses
+            .iter()
+            .filter(|l| l.category == LicenseCategory::Unknown)
+            .count(),
         license_counts,
     };
 
@@ -274,9 +284,18 @@ mod tests {
     #[test]
     fn test_categorize_license() {
         assert_eq!(categorize_license("MIT"), LicenseCategory::Permissive);
-        assert_eq!(categorize_license("Apache-2.0"), LicenseCategory::Permissive);
-        assert_eq!(categorize_license("GPL-3.0"), LicenseCategory::StrongCopyleft);
-        assert_eq!(categorize_license("LGPL-2.1"), LicenseCategory::WeakCopyleft);
+        assert_eq!(
+            categorize_license("Apache-2.0"),
+            LicenseCategory::Permissive
+        );
+        assert_eq!(
+            categorize_license("GPL-3.0"),
+            LicenseCategory::StrongCopyleft
+        );
+        assert_eq!(
+            categorize_license("LGPL-2.1"),
+            LicenseCategory::WeakCopyleft
+        );
     }
 
     #[test]

@@ -115,10 +115,14 @@ mod tests {
 
         let mut pom = String::new();
         pom.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        pom.push_str("<project xmlns=\"http://maven.apache.org/POM/4.0.0\"
-");
-        pom.push_str("         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
-");
+        pom.push_str(
+            "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"
+",
+        );
+        pom.push_str(
+            "         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+",
+        );
         pom.push_str("         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">
 ");
         pom.push_str("    <modelVersion>4.0.0</modelVersion>\n");
@@ -138,7 +142,10 @@ mod tests {
             if let Ok((dep_group, dep_artifact)) = parse_coord(coord) {
                 pom.push_str("        <dependency>\n");
                 pom.push_str(&format!("            <groupId>{}</groupId>\n", dep_group));
-                pom.push_str(&format!("            <artifactId>{}</artifactId>\n", dep_artifact));
+                pom.push_str(&format!(
+                    "            <artifactId>{}</artifactId>\n",
+                    dep_artifact
+                ));
                 pom.push_str(&format!("            <version>{}</version>\n", ver));
                 pom.push_str("        </dependency>\n");
             }
@@ -161,13 +168,13 @@ mod tests {
     fn test_pom_with_invalid_coord_skipped() {
         let mut pom = String::new();
         pom.push_str("<dependencies>\n");
-        let deps = vec![
-            ("valid:dep", "1.0"),
-            ("invalid-no-colon", "2.0"),
-        ];
+        let deps = vec![("valid:dep", "1.0"), ("invalid-no-colon", "2.0")];
         for (coord, ver) in &deps {
             if let Ok((dep_group, dep_artifact)) = parse_coord(coord) {
-                pom.push_str(&format!("    <dependency>{}:{}</dependency>\n", dep_group, dep_artifact));
+                pom.push_str(&format!(
+                    "    <dependency>{}:{}</dependency>\n",
+                    dep_group, dep_artifact
+                ));
             }
         }
         pom.push_str("</dependencies>");
@@ -183,7 +190,10 @@ mod tests {
         pom.push_str("    <dependencies>\n");
         for (coord, ver) in &dependencies {
             if let Ok((dep_group, dep_artifact)) = parse_coord(coord) {
-                pom.push_str(&format!("        <dependency>{}:{}</dependency>\n", dep_group, dep_artifact));
+                pom.push_str(&format!(
+                    "        <dependency>{}:{}</dependency>\n",
+                    dep_group, dep_artifact
+                ));
             }
         }
         pom.push_str("    </dependencies>\n");
@@ -205,10 +215,14 @@ mod tests {
         // Verify the XML structure is correct
         let mut pom = String::new();
         pom.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        pom.push_str("<project xmlns=\"http://maven.apache.org/POM/4.0.0\"
-");
-        pom.push_str("         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
-");
+        pom.push_str(
+            "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"
+",
+        );
+        pom.push_str(
+            "         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+",
+        );
         pom.push_str("         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">
 ");
         pom.push_str("    <modelVersion>4.0.0</modelVersion>\n");

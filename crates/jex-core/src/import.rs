@@ -85,7 +85,10 @@ pub fn parse_pom(path: &Path) -> Result<Vec<PomDependency>> {
                                 if in_dep_mgmt {
                                     // 记录 dependencyManagement 版本
                                     mgmt_versions.insert(
-                                        (current_dep.group_id.clone(), current_dep.artifact_id.clone()),
+                                        (
+                                            current_dep.group_id.clone(),
+                                            current_dep.artifact_id.clone(),
+                                        ),
                                         ver,
                                     );
                                 } else {
@@ -397,7 +400,10 @@ mod tests {
     fn test_merge_with_existing_conflict() {
         let imported = vec!["com.google.code.gson:gson:2.11.0".to_string()];
         let mut existing = HashMap::new();
-        existing.insert("com.google.code.gson:gson".to_string(), "2.10.0".to_string());
+        existing.insert(
+            "com.google.code.gson:gson".to_string(),
+            "2.10.0".to_string(),
+        );
 
         let merged = merge_with_existing(&imported, &existing);
         assert_eq!(merged.len(), 1);
@@ -448,7 +454,10 @@ mod tests {
             "org.apache.commons:commons-lang3:3.14.0".to_string(),
         ];
         let mut existing = HashMap::new();
-        existing.insert("com.google.code.gson:gson".to_string(), "2.10.0".to_string());
+        existing.insert(
+            "com.google.code.gson:gson".to_string(),
+            "2.10.0".to_string(),
+        );
 
         let merged = merge_with_existing(&imported, &existing);
         assert_eq!(merged.len(), 3);
@@ -456,7 +465,10 @@ mod tests {
         assert_eq!(merged.get("com.google.code.gson:gson").unwrap(), "2.10.0");
         // 新依赖追加
         assert_eq!(merged.get("org.slf4j:slf4j-api").unwrap(), "2.0.9");
-        assert_eq!(merged.get("org.apache.commons:commons-lang3").unwrap(), "3.14.0");
+        assert_eq!(
+            merged.get("org.apache.commons:commons-lang3").unwrap(),
+            "3.14.0"
+        );
     }
 
     #[test]

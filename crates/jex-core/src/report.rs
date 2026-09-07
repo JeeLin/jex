@@ -69,7 +69,10 @@ pub fn render_report(report: &DependencyReport) -> String {
 
     // 摘要
     output.push_str("📋 摘要\n");
-    output.push_str(&format!("  总依赖数: {}\n", report.summary.total_dependencies));
+    output.push_str(&format!(
+        "  总依赖数: {}\n",
+        report.summary.total_dependencies
+    ));
     output.push_str(&format!("  可更新: {}\n", report.summary.outdated_count));
     output.push_str(&format!(
         "  安全漏洞: {}\n",
@@ -109,9 +112,7 @@ pub fn render_report(report: &DependencyReport) -> String {
     // 许可证信息
     let mut license_counts = std::collections::HashMap::new();
     for license in &report.licenses {
-        *license_counts
-            .entry(license.spdx_id.clone())
-            .or_insert(0) += 1;
+        *license_counts.entry(license.spdx_id.clone()).or_insert(0) += 1;
     }
 
     if !license_counts.is_empty() {

@@ -1,6 +1,10 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{tree_verbose, watch, workspace, audit, audit_fix, cache, changelog, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
+use jex_core::{
+    audit, audit_fix, cache, changelog, compat_check, deps, diag, export, fmt, import, jdk, jfr,
+    license, license_check, outdated, pin, profiler, report, run, search, template, tree,
+    tree_verbose, watch, workspace,
+};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -559,7 +563,7 @@ fn run(cli: Cli) -> Result<()> {
                 }
             }
             Ok(())
-        },
+        }
         Commands::Report(a) => {
             let report = report::generate_report()?;
 
@@ -570,7 +574,7 @@ fn run(cli: Cli) -> Result<()> {
                 println!("{}", output);
             }
             Ok(())
-        },
+        }
         Commands::Pin(a) => {
             if a.list {
                 let pinned = pin::list_pinned()?;
@@ -593,7 +597,7 @@ fn run(cli: Cli) -> Result<()> {
                 eprintln!("请指定依赖坐标或使用 --all/--list/--unpin");
                 std::process::exit(1);
             }
-        },
+        }
         Commands::Why(a) => deps::why(&a.coord),
         Commands::Cache(a) => match &a.command {
             CacheCommand::Clean { global } => cache::clean_cache(*global),
@@ -635,7 +639,7 @@ fn run(cli: Cli) -> Result<()> {
                 }
             }
             Ok(())
-        },
+        }
         Commands::Check => {
             let report = compat_check::check_compatibility()?;
             println!("🔍 依赖版本兼容性检查");
@@ -646,7 +650,11 @@ fn run(cli: Cli) -> Result<()> {
             if !report.conflicts.is_empty() {
                 println!("\n版本冲突:");
                 for conflict in &report.conflicts {
-                    println!("  {}: {}", conflict.dependency, conflict.versions.join(", "));
+                    println!(
+                        "  {}: {}",
+                        conflict.dependency,
+                        conflict.versions.join(", ")
+                    );
                 }
             }
             if !report.warnings.is_empty() {
@@ -656,7 +664,7 @@ fn run(cli: Cli) -> Result<()> {
                 }
             }
             Ok(())
-        },
+        }
         Commands::Conflict => deps::conflict(),
         Commands::Analyze => {
             use jex_core::analyze;
@@ -811,7 +819,10 @@ fn run(cli: Cli) -> Result<()> {
             } else {
                 println!("📦 找到 {} 个可更新依赖:\n", deps.len());
                 for dep in &deps {
-                    println!("  {}:{}: {} → {}", dep.group, dep.artifact, dep.current, dep.latest);
+                    println!(
+                        "  {}:{}: {} → {}",
+                        dep.group, dep.artifact, dep.current, dep.latest
+                    );
                 }
             }
         }),
@@ -833,7 +844,10 @@ fn run(cli: Cli) -> Result<()> {
                     if !fix_report.fixes.is_empty() {
                         println!("\n🔧 修复建议 ({} 个):\n", fix_report.fixes.len());
                         for fix in &fix_report.fixes {
-                            println!("  {} : {} → {}", fix.dependency, fix.current_version, fix.suggested_version);
+                            println!(
+                                "  {} : {} → {}",
+                                fix.dependency, fix.current_version, fix.suggested_version
+                            );
                             println!("    原因: {}", fix.reason);
                         }
                     }
@@ -856,7 +870,13 @@ fn run(cli: Cli) -> Result<()> {
                         println!();
 
                         for vuln in &report.vulnerabilities {
-                            println!("  {} [{}] {}:{}", vuln.severity.display(), vuln.cve_id, vuln.group, vuln.artifact);
+                            println!(
+                                "  {} [{}] {}:{}",
+                                vuln.severity.display(),
+                                vuln.cve_id,
+                                vuln.group,
+                                vuln.artifact
+                            );
                             println!("    {}", vuln.description);
                             if let Some(suggestion) = audit::get_fix_suggestion(vuln) {
                                 println!("    修复建议: {}", suggestion);
@@ -867,7 +887,7 @@ fn run(cli: Cli) -> Result<()> {
                 }
             }
             Ok(())
-        },
+        }
         Commands::License(a) => {
             let licenses = license::check_licenses()?;
             let report = license::analyze_compatibility(&licenses);
@@ -880,7 +900,10 @@ fn run(cli: Cli) -> Result<()> {
                 } else {
                     println!("❌ 许可证兼容性检查失败");
                     for conflict in &report.conflicts {
-                        println!("  冲突: {} vs {} - {}", conflict.license1, conflict.license2, conflict.reason);
+                        println!(
+                            "  冲突: {} vs {} - {}",
+                            conflict.license1, conflict.license2, conflict.reason
+                        );
                     }
                 }
                 for warning in &report.warnings {
@@ -907,7 +930,7 @@ fn run(cli: Cli) -> Result<()> {
                 }
             }
             Ok(())
-        },
+        }
         Commands::Changelog => {
             let report = changelog::generate_changelog()?;
             if report.entries.is_empty() {
@@ -932,8 +955,9 @@ fn run(cli: Cli) -> Result<()> {
                     Ok(())
                 }
                 WorkspaceCommand::List => {
-                    let root = workspace::find_workspace_root(&cwd)
-                        .ok_or_else(|| jex_core::error::Error::new("未找到工作区（缺少 jex-workspace.toml）"))?;
+                    let root = workspace::find_workspace_root(&cwd).ok_or_else(|| {
+                        jex_core::error::Error::new("未找到工作区（缺少 jex-workspace.toml）")
+                    })?;
                     let config = workspace::parse_workspace_config(&root)?;
                     let modules = workspace::discover_modules(&root, &config)?;
                     if modules.is_empty() {
@@ -948,8 +972,9 @@ fn run(cli: Cli) -> Result<()> {
                     Ok(())
                 }
                 WorkspaceCommand::Status => {
-                    let root = workspace::find_workspace_root(&cwd)
-                        .ok_or_else(|| jex_core::error::Error::new("未找到工作区（缺少 jex-workspace.toml）"))?;
+                    let root = workspace::find_workspace_root(&cwd).ok_or_else(|| {
+                        jex_core::error::Error::new("未找到工作区（缺少 jex-workspace.toml）")
+                    })?;
                     let status = workspace::workspace_status(&root)?;
                     println!("📊 工作区状态: {}", status.root.display());
                     println!("   模块数: {}", status.modules.len());
@@ -960,8 +985,9 @@ fn run(cli: Cli) -> Result<()> {
                     Ok(())
                 }
                 WorkspaceCommand::Build => {
-                    let root = workspace::find_workspace_root(&cwd)
-                        .ok_or_else(|| jex_core::error::Error::new("未找到工作区（缺少 jex-workspace.toml）"))?;
+                    let root = workspace::find_workspace_root(&cwd).ok_or_else(|| {
+                        jex_core::error::Error::new("未找到工作区（缺少 jex-workspace.toml）")
+                    })?;
                     let config = workspace::parse_workspace_config(&root)?;
                     let modules = workspace::discover_modules(&root, &config)?;
                     println!("🔨 编译 {} 个模块...\n", modules.len());
@@ -982,7 +1008,10 @@ fn run(cli: Cli) -> Result<()> {
                     }
                     println!("\n完成: {} 个模块, {} 个失败", modules.len(), failed);
                     if failed > 0 {
-                        return Err(jex_core::error::Error::new(format!("{} 个模块编译失败", failed)));
+                        return Err(jex_core::error::Error::new(format!(
+                            "{} 个模块编译失败",
+                            failed
+                        )));
                     }
                     Ok(())
                 }
@@ -1016,7 +1045,7 @@ fn run(cli: Cli) -> Result<()> {
                 }
                 Ok(())
             })
-        },
+        }
     }
 }
 

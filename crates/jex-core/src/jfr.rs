@@ -614,9 +614,18 @@ mod tests {
         let size = total as u32;
         record[1..5].copy_from_slice(&size.to_be_bytes());
         let mut pos = 5;
-        for b in &et_bytes { record[pos] = *b; pos += 1; }
-        for b in &ts_bytes { record[pos] = *b; pos += 1; }
-        for b in &dur_bytes { record[pos] = *b; pos += 1; }
+        for b in &et_bytes {
+            record[pos] = *b;
+            pos += 1;
+        }
+        for b in &ts_bytes {
+            record[pos] = *b;
+            pos += 1;
+        }
+        for b in &dur_bytes {
+            record[pos] = *b;
+            pos += 1;
+        }
         record
     }
 
@@ -646,15 +655,42 @@ mod tests {
 
     #[test]
     fn test_event_type_from_jfr_name_all_variants() {
-        assert_eq!(EventType::from_jfr_name("jdk.NativeMethodSample"), EventType::CpuSampling);
-        assert_eq!(EventType::from_jfr_name("jdk.GCHeapSummary"), EventType::GcEvent);
-        assert_eq!(EventType::from_jfr_name("jdk.GCPhasePause"), EventType::GcEvent);
-        assert_eq!(EventType::from_jfr_name("jdk.FileWrite"), EventType::FileWrite);
-        assert_eq!(EventType::from_jfr_name("jdk.SocketRead"), EventType::SocketRead);
-        assert_eq!(EventType::from_jfr_name("jdk.SocketWrite"), EventType::SocketWrite);
-        assert_eq!(EventType::from_jfr_name("jdk.JavaMonitorWait"), EventType::ThreadBlock);
-        assert_eq!(EventType::from_jfr_name("jdk.ObjectAllocationOutsideTLAB"), EventType::MemAlloc);
-        assert_eq!(EventType::from_jfr_name("jdk.AllocationRequiringGC"), EventType::MemAlloc);
+        assert_eq!(
+            EventType::from_jfr_name("jdk.NativeMethodSample"),
+            EventType::CpuSampling
+        );
+        assert_eq!(
+            EventType::from_jfr_name("jdk.GCHeapSummary"),
+            EventType::GcEvent
+        );
+        assert_eq!(
+            EventType::from_jfr_name("jdk.GCPhasePause"),
+            EventType::GcEvent
+        );
+        assert_eq!(
+            EventType::from_jfr_name("jdk.FileWrite"),
+            EventType::FileWrite
+        );
+        assert_eq!(
+            EventType::from_jfr_name("jdk.SocketRead"),
+            EventType::SocketRead
+        );
+        assert_eq!(
+            EventType::from_jfr_name("jdk.SocketWrite"),
+            EventType::SocketWrite
+        );
+        assert_eq!(
+            EventType::from_jfr_name("jdk.JavaMonitorWait"),
+            EventType::ThreadBlock
+        );
+        assert_eq!(
+            EventType::from_jfr_name("jdk.ObjectAllocationOutsideTLAB"),
+            EventType::MemAlloc
+        );
+        assert_eq!(
+            EventType::from_jfr_name("jdk.AllocationRequiringGC"),
+            EventType::MemAlloc
+        );
         match EventType::from_jfr_name("jdk.CustomEvent") {
             EventType::Unknown(s) => assert_eq!(s, "jdk.CustomEvent"),
             _ => panic!("Expected Unknown variant"),
@@ -769,8 +805,11 @@ mod tests {
     #[test]
     fn test_parse_jfr_events_empty_data() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 1024, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 1024,
+            start_time: 0,
+            duration: 0,
         };
         let data = vec![0u8; 68];
         let events = parse_jfr_events(&data, &header).unwrap();
@@ -780,8 +819,11 @@ mod tests {
     #[test]
     fn test_extract_event_too_short() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 0, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 0,
+            start_time: 0,
+            duration: 0,
         };
         let record = vec![0u8; 5];
         assert!(extract_event_from_record(&record, &header).is_none());
@@ -790,8 +832,11 @@ mod tests {
     #[test]
     fn test_extract_event_non_event_record() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 0, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 0,
+            start_time: 0,
+            duration: 0,
         };
         let record = vec![0x10u8; 20];
         assert!(extract_event_from_record(&record, &header).is_none());
@@ -800,8 +845,11 @@ mod tests {
     #[test]
     fn test_extract_event_valid() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 0, start_time: 1000, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 0,
+            start_time: 1000,
+            duration: 0,
         };
         let record = build_event_record(101, 10, 5);
         let event = extract_event_from_record(&record, &header).unwrap();
@@ -813,8 +861,11 @@ mod tests {
     #[test]
     fn test_extract_event_gc() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 0, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 0,
+            start_time: 0,
+            duration: 0,
         };
         let record = build_event_record(160, 0, 0);
         let event = extract_event_from_record(&record, &header).unwrap();
@@ -824,8 +875,11 @@ mod tests {
     #[test]
     fn test_extract_event_file_read() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 0, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 0,
+            start_time: 0,
+            duration: 0,
         };
         let record = build_event_record(110, 0, 0);
         let event = extract_event_from_record(&record, &header).unwrap();
@@ -835,8 +889,11 @@ mod tests {
     #[test]
     fn test_extract_event_file_write() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 0, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 0,
+            start_time: 0,
+            duration: 0,
         };
         let record = build_event_record(111, 0, 0);
         let event = extract_event_from_record(&record, &header).unwrap();
@@ -846,8 +903,11 @@ mod tests {
     #[test]
     fn test_extract_event_socket_read() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 0, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 0,
+            start_time: 0,
+            duration: 0,
         };
         let record = build_event_record(120, 0, 0);
         let event = extract_event_from_record(&record, &header).unwrap();
@@ -857,8 +917,11 @@ mod tests {
     #[test]
     fn test_extract_event_socket_write() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 0, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 0,
+            start_time: 0,
+            duration: 0,
         };
         let record = build_event_record(121, 0, 0);
         let event = extract_event_from_record(&record, &header).unwrap();
@@ -868,8 +931,11 @@ mod tests {
     #[test]
     fn test_extract_event_thread_block() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 0, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 0,
+            start_time: 0,
+            duration: 0,
         };
         let record = build_event_record(130, 0, 0);
         let event = extract_event_from_record(&record, &header).unwrap();
@@ -879,8 +945,11 @@ mod tests {
     #[test]
     fn test_extract_event_mem_alloc() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 0, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 0,
+            start_time: 0,
+            duration: 0,
         };
         let record = build_event_record(140, 0, 0);
         let event = extract_event_from_record(&record, &header).unwrap();
@@ -890,8 +959,11 @@ mod tests {
     #[test]
     fn test_extract_event_unknown() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 0, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 0,
+            start_time: 0,
+            duration: 0,
         };
         let record = build_event_record(999, 0, 0);
         let event = extract_event_from_record(&record, &header).unwrap();
@@ -905,8 +977,10 @@ mod tests {
     #[test]
     fn test_summarize_empty() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 1024, start_time: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 1024,
+            start_time: 0,
             duration: 10_000_000_000,
         };
         let events = vec![];
@@ -918,8 +992,11 @@ mod tests {
     #[test]
     fn test_summarize_duration_zero() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 1024, start_time: 0, duration: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 1024,
+            start_time: 0,
+            duration: 0,
         };
         let summary = summarize(&[], &header);
         assert_eq!(summary.duration_secs, 0.0);
@@ -928,34 +1005,54 @@ mod tests {
     #[test]
     fn test_summarize_with_events() {
         let header = JfrHeader {
-            major_version: 2, minor_version: 0,
-            chunk_size: 1024, start_time: 0,
+            major_version: 2,
+            minor_version: 0,
+            chunk_size: 1024,
+            start_time: 0,
             duration: 5_000_000_000,
         };
         let events = vec![
             JfrEvent {
-                timestamp: 100, event_type: EventType::GcEvent,
-                duration: 10_000_000, thread: None, details: String::new(),
+                timestamp: 100,
+                event_type: EventType::GcEvent,
+                duration: 10_000_000,
+                thread: None,
+                details: String::new(),
             },
             JfrEvent {
-                timestamp: 200, event_type: EventType::FileRead,
-                duration: 0, thread: None, details: String::new(),
+                timestamp: 200,
+                event_type: EventType::FileRead,
+                duration: 0,
+                thread: None,
+                details: String::new(),
             },
             JfrEvent {
-                timestamp: 300, event_type: EventType::ThreadBlock,
-                duration: 5_000_000, thread: None, details: String::new(),
+                timestamp: 300,
+                event_type: EventType::ThreadBlock,
+                duration: 5_000_000,
+                thread: None,
+                details: String::new(),
             },
             JfrEvent {
-                timestamp: 400, event_type: EventType::MemAlloc,
-                duration: 0, thread: None, details: String::new(),
+                timestamp: 400,
+                event_type: EventType::MemAlloc,
+                duration: 0,
+                thread: None,
+                details: String::new(),
             },
             JfrEvent {
-                timestamp: 500, event_type: EventType::FileWrite,
-                duration: 0, thread: None, details: String::new(),
+                timestamp: 500,
+                event_type: EventType::FileWrite,
+                duration: 0,
+                thread: None,
+                details: String::new(),
             },
             JfrEvent {
-                timestamp: 600, event_type: EventType::CpuSampling,
-                duration: 0, thread: None, details: String::new(),
+                timestamp: 600,
+                event_type: EventType::CpuSampling,
+                duration: 0,
+                thread: None,
+                details: String::new(),
             },
         ];
         let summary = summarize(&events, &header);
@@ -1061,5 +1158,4 @@ mod tests {
         let debug = format!("{:?}", event);
         assert!(debug.contains("GcEvent"));
     }
-
 }

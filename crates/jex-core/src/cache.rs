@@ -48,7 +48,8 @@ fn dir_size(path: &std::path::Path) -> Result<u64> {
         for entry in std::fs::read_dir(path)
             .map_err(|e| crate::error::Error::new(format!("读取目录失败: {}", e)))?
         {
-            let entry = entry.map_err(|e| crate::error::Error::new(format!("读取条目失败: {}", e)))?;
+            let entry =
+                entry.map_err(|e| crate::error::Error::new(format!("读取条目失败: {}", e)))?;
             let metadata = entry
                 .metadata()
                 .map_err(|e| crate::error::Error::new(format!("获取元数据失败: {}", e)))?;
@@ -187,7 +188,9 @@ mod tests {
     #[test]
     fn test_cache_path() {
         let path = cache_path().unwrap();
-        assert!(path.to_string_lossy().contains(".jex") || path.to_string_lossy().contains("coursier"));
+        assert!(
+            path.to_string_lossy().contains(".jex") || path.to_string_lossy().contains("coursier")
+        );
     }
     #[test]
     fn test_dir_size_empty() {

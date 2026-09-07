@@ -154,11 +154,7 @@ pub fn compile(files: &[&str], clean: bool) -> Result<(PathBuf, String)> {
     println!("Compiling {} files...", files.len());
 
     let mut compile_cmd = Command::new(&javac_bin);
-    compile_cmd
-        .arg("-cp")
-        .arg(&classpath)
-        .arg("-d")
-        .arg(&build);
+    compile_cmd.arg("-cp").arg(&classpath).arg("-d").arg(&build);
 
     for file in files {
         compile_cmd.arg(file);
@@ -269,8 +265,8 @@ pub fn run(file: &str, args: &[String]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serial_test::serial;
     use crate::deps::LockFile;
+    use serial_test::serial;
     use std::collections::HashMap;
 
     #[test]
@@ -402,7 +398,10 @@ mod tests {
             lockfile_version: Some(1),
             dependencies: Some({
                 let mut d = HashMap::new();
-                d.insert("com.nonexistent:fake-artifact-xyz999".to_string(), "0.0.1".to_string());
+                d.insert(
+                    "com.nonexistent:fake-artifact-xyz999".to_string(),
+                    "0.0.1".to_string(),
+                );
                 d
             }),
         };
@@ -430,13 +429,11 @@ mod tests {
         let class_dir = result.unwrap();
         assert!(class_dir.exists());
         // No .class files yet
-        let has_class = std::fs::read_dir(&class_dir)
-            .unwrap()
-            .any(|e| {
-                e.ok()
-                    .and_then(|e| e.path().extension().map(|ext| ext == "class"))
-                    .unwrap_or(false)
-            });
+        let has_class = std::fs::read_dir(&class_dir).unwrap().any(|e| {
+            e.ok()
+                .and_then(|e| e.path().extension().map(|ext| ext == "class"))
+                .unwrap_or(false)
+        });
         assert!(!has_class);
     }
 
@@ -507,4 +504,3 @@ mod tests {
         format!("{:x}-{:x}", t.as_secs(), t.subsec_nanos())
     }
 }
-

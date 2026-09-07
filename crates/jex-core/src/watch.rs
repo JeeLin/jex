@@ -120,7 +120,10 @@ where
     let mut last_event = Instant::now() - Duration::from_secs(1);
     let debounce = Duration::from_millis(config.debounce_ms);
 
-    println!("👀 监听 {} 目录（debounce: {}ms）...", config.dir, config.debounce_ms);
+    println!(
+        "👀 监听 {} 目录（debounce: {}ms）...",
+        config.dir, config.debounce_ms
+    );
     println!("   按 Ctrl+C 退出\n");
 
     while let Ok(event) = rx.recv() {
@@ -175,7 +178,9 @@ mod tests {
 
     #[test]
     fn test_should_ignore_nested() {
-        assert!(should_ignore(Path::new("project/target/classes/Main.class")));
+        assert!(should_ignore(Path::new(
+            "project/target/classes/Main.class"
+        )));
         assert!(!should_ignore(Path::new("project/src/Main.java")));
     }
 }

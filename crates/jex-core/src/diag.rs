@@ -1273,8 +1273,7 @@ Found one Java-level deadlock:
 
     #[test]
     fn test_parse_jstat_all_multi_line() {
-        let output = "S0     S1     Eden    Old\n"
-            .to_string()
+        let output = "S0     S1     Eden    Old\n".to_string()
             + "  0.00  45.23  67.89  12.34  95.67  92.10   125   1.234    3   0.567  1.801\n"
             + " 10.00  20.00  30.00  40.00  50.00  60.00   200   2.000    5   1.000  3.000\n"
             + "--------------------------------------------------------------\n";

@@ -465,7 +465,14 @@ mod tests {
 </project>"#;
         let result = parse_pom_dependencies(pom).unwrap();
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0], ("com.google.code.gson".to_string(), "gson".to_string(), "2.11.0".to_string()));
+        assert_eq!(
+            result[0],
+            (
+                "com.google.code.gson".to_string(),
+                "gson".to_string(),
+                "2.11.0".to_string()
+            )
+        );
     }
 
     #[test]
@@ -745,5 +752,4 @@ mod tests {
         let result = parse_pom_dependencies(pom).unwrap();
         assert!(result.is_empty());
     }
-
 }

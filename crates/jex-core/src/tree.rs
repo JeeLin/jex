@@ -198,7 +198,12 @@ mod tests {
         let names: Vec<_> = tree.root.children.iter().map(|c| c.name.as_str()).collect();
         assert!(names.contains(&"com.google.code.gson:gson"));
         assert!(names.contains(&"org.junit.jupiter:junit-jupiter"));
-        let gson = tree.root.children.iter().find(|c| c.name == "com.google.code.gson:gson").unwrap();
+        let gson = tree
+            .root
+            .children
+            .iter()
+            .find(|c| c.name == "com.google.code.gson:gson")
+            .unwrap();
         assert_eq!(gson.version, "2.11.0");
     }
 
@@ -207,7 +212,11 @@ mod tests {
     fn test_build_dependency_tree_lock_malformed() {
         let tmp = tempfile::tempdir().unwrap();
         // Write invalid TOML to trigger parse error
-        std::fs::write(tmp.path().join("jex.lock.toml"), "this is not valid toml {{{").unwrap();
+        std::fs::write(
+            tmp.path().join("jex.lock.toml"),
+            "this is not valid toml {{{",
+        )
+        .unwrap();
 
         let orig = std::env::current_dir().unwrap();
         std::env::set_current_dir(tmp.path()).unwrap();

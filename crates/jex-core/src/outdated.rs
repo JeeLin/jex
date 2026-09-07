@@ -3,9 +3,9 @@
 //! - upgrade: 升级指定或全部依赖
 
 use crate::deps;
-use serde::{Deserialize, Serialize};
 use crate::error::Result;
 use crate::resolver;
+use serde::{Deserialize, Serialize};
 /// 过时的依赖信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutdatedDep {
@@ -63,7 +63,10 @@ pub fn upgrade_dep(coord: &str) -> Result<()> {
             println!("✅ {} 已是最新版本 ({})", coord, latest_version);
             return Ok(());
         }
-        println!("📦 升级 {}: {} → {}", coord, current_version, latest_version);
+        println!(
+            "📦 升级 {}: {} → {}",
+            coord, current_version, latest_version
+        );
     } else {
         println!("📦 添加 {}: {}", coord, latest_version);
     }
@@ -95,7 +98,10 @@ pub fn upgrade_all() -> Result<()> {
     println!("📦 找到 {} 个可更新依赖:\n", outdated.len());
 
     for dep in &outdated {
-        println!("  {}:{}: {} → {}", dep.group, dep.artifact, dep.current, dep.latest);
+        println!(
+            "  {}:{}: {} → {}",
+            dep.group, dep.artifact, dep.current, dep.latest
+        );
     }
 
     println!();

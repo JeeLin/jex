@@ -294,7 +294,8 @@ mod tests {
             PathBuf::from("Main.java"),
             PathBuf::from("target/Foo.java"),
         ];
-        let filtered: Vec<_> = files.into_iter()
+        let filtered: Vec<_> = files
+            .into_iter()
             .filter(|f| {
                 let s = f.to_string_lossy();
                 !config.exclude.iter().any(|e| s.contains(e.as_str()))
@@ -312,11 +313,9 @@ mod tests {
             skip_future: false,
             exclude: vec![],
         };
-        let files: Vec<_> = vec![
-            PathBuf::from("build/Test.java"),
-            PathBuf::from("Main.java"),
-        ];
-        let filtered: Vec<_> = files.into_iter()
+        let files: Vec<_> = vec![PathBuf::from("build/Test.java"), PathBuf::from("Main.java")];
+        let filtered: Vec<_> = files
+            .into_iter()
             .filter(|f| {
                 let s = f.to_string_lossy();
                 !config.exclude.iter().any(|e| s.contains(e.as_str()))

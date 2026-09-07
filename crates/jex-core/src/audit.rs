@@ -38,9 +38,9 @@ impl Severity {
 
     pub fn color(&self) -> &'static str {
         match self {
-            Severity::Critical | Severity::High => "\x1b[31m",  // 红色
-            Severity::Medium => "\x1b[33m",  // 黄色
-            Severity::Low => "\x1b[32m",     // 绿色
+            Severity::Critical | Severity::High => "\x1b[31m", // 红色
+            Severity::Medium => "\x1b[33m",                    // 黄色
+            Severity::Low => "\x1b[32m",                       // 绿色
         }
     }
 
@@ -130,7 +130,10 @@ fn query_osv(group: &str, artifact: &str, version: &str) -> Result<Vec<Vulnerabi
     let mut result = Vec::new();
     for vuln in vulns {
         let cve_id = vuln["id"].as_str().unwrap_or("unknown").to_string();
-        let summary = vuln["summary"].as_str().unwrap_or("No description").to_string();
+        let summary = vuln["summary"]
+            .as_str()
+            .unwrap_or("No description")
+            .to_string();
 
         // 提取严重程度
         let severity = extract_severity(&vuln);
@@ -154,9 +157,7 @@ fn query_osv(group: &str, artifact: &str, version: &str) -> Result<Vec<Vulnerabi
 
 /// 提取严重程度
 fn extract_severity(vuln: &serde_json::Value) -> Severity {
-    let severity_str = vuln["severity"][0]["score"]
-        .as_str()
-        .unwrap_or("MEDIUM");
+    let severity_str = vuln["severity"][0]["score"].as_str().unwrap_or("MEDIUM");
 
     match severity_str.to_uppercase().as_str() {
         "CRITICAL" => Severity::Critical,
@@ -207,10 +208,22 @@ pub struct AuditReport {
 
 /// 生成审计报告
 pub fn generate_report(vulnerabilities: Vec<Vulnerability>) -> AuditReport {
-    let critical = vulnerabilities.iter().filter(|v| v.severity == Severity::Critical).count();
-    let high = vulnerabilities.iter().filter(|v| v.severity == Severity::High).count();
-    let medium = vulnerabilities.iter().filter(|v| v.severity == Severity::Medium).count();
-    let low = vulnerabilities.iter().filter(|v| v.severity == Severity::Low).count();
+    let critical = vulnerabilities
+        .iter()
+        .filter(|v| v.severity == Severity::Critical)
+        .count();
+    let high = vulnerabilities
+        .iter()
+        .filter(|v| v.severity == Severity::High)
+        .count();
+    let medium = vulnerabilities
+        .iter()
+        .filter(|v| v.severity == Severity::Medium)
+        .count();
+    let low = vulnerabilities
+        .iter()
+        .filter(|v| v.severity == Severity::Low)
+        .count();
 
     AuditReport {
         total_vulnerabilities: vulnerabilities.len(),

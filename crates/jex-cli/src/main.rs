@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{tree_verbose, audit, audit_fix, cache, changelog, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
+use jex_core::{tree_verbose, watch, audit, audit_fix, cache, changelog, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -135,6 +135,10 @@ enum Commands {
     /// 依赖版本变更日志
     #[command(alias = "cl")]
     Changelog,
+
+    /// 热重载：监听文件变更自动编译运行
+    #[command(alias = "w")]
+    Watch(WatchArgs),
 }
 #[derive(Subcommand)]
 enum JdkCommand {
@@ -385,6 +389,19 @@ struct TreeArgs {
     /// 按名称/许可证/漏洞过滤依赖
     #[arg(short, long)]
     filter: Option<String>,
+}
+
+#[derive(Args)]
+struct WatchArgs {
+    /// 监听目录（默认 src）
+    #[arg(short, long, default_value = "src")]
+    dir: String,
+    /// debounce 延迟（毫秒，默认 500）
+    #[arg(short, long, default_value_t = 500)]
+    debounce: u64,
+    /// 传递给 jex run 的参数
+    #[arg(last = true)]
+    args: Vec<String>,
 }
 
 #[derive(Args)]
@@ -890,6 +907,35 @@ fn run(cli: Cli) -> Result<()> {
             }
             Ok(())
         }
+        Commands::Watch(a) => {
+            let config = watch::WatchConfig {
+                dir: a.dir.clone(),
+                debounce_ms: a.debounce,
+                ..Default::default()
+            };
+
+            watch::run_watch_loop(&config, |_event| {
+                println!("\n🔄 检测到变更，重新编译运行...\n");
+                let files = run::collect_java_files()?;
+                if files.is_empty() {
+                    println!("src/ 下没有 .java 文件");
+                    return Ok(());
+                }
+                let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
+                match run::compile(&file_refs, false) {
+                    Ok((_build, _classpath)) => {
+                        println!("✅ 编译成功，运行中...");
+                        if let Err(e) = run::run(file_refs[0], &a.args) {
+                            println!("❌ 运行失败: {}", e);
+                        }
+                    }
+                    Err(e) => {
+                        println!("❌ 编译失败: {}", e);
+                    }
+                }
+                Ok(())
+            })
+        },
     }
 }
 

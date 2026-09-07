@@ -14,8 +14,9 @@ Cargo.lock
 .DS_Store
 Thumbs.db
 
-# Dev flow / milestones (local only)
-.dev-flow/
+# Dev flow (local only)
+.dev-flow/*
+!.dev-flow/milestones/
 .mnemon/
 *.html
 

@@ -15,8 +15,7 @@ Cargo.lock
 Thumbs.db
 
 # Dev flow (local only)
-.dev-flow/*
-!.dev-flow/milestones/
+.dev-flow/
 .mnemon/
 *.html
 

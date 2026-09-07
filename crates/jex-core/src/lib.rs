@@ -1,6 +1,7 @@
 pub mod analyze;
 pub mod audit;
 pub mod cache;
+pub mod compat_check;
 pub mod config;
 pub mod deps;
 pub mod diag;

@@ -154,7 +154,7 @@ pub fn list_cache() -> Result<Vec<CacheEntry>> {
     }
 
     // 按大小排序
-    entries.sort_by(|a, b| b.size.cmp(&a.size));
+    entries.sort_by_key(|e| std::cmp::Reverse(e.size));
 
     Ok(entries)
 }

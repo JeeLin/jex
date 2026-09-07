@@ -80,16 +80,12 @@ fn generate_fix_suggestion(
     current_version: &str,
     vuln: &Vulnerability,
 ) -> Option<FixSuggestion> {
-    if let Some(fixed_version) = &vuln.fixed_version {
-        Some(FixSuggestion {
-            dependency: coord.to_string(),
-            current_version: current_version.to_string(),
-            suggested_version: fixed_version.clone(),
-            reason: vuln.description.clone(),
-        })
-    } else {
-        None
-    }
+    vuln.fixed_version.as_ref().map(|fixed_version| FixSuggestion {
+        dependency: coord.to_string(),
+        current_version: current_version.to_string(),
+        suggested_version: fixed_version.clone(),
+        reason: vuln.description.clone(),
+    })
 }
 
 #[cfg(test)]

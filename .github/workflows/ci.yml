@@ -3,7 +3,6 @@ name: CI
 on:
   push:
     tags: ['v*']
-    tags: ['v*']
 jobs:
   # ── 检查（平台无关，只需一次） ──────────────────────
   check:
@@ -45,7 +44,7 @@ jobs:
           components: rustfmt
       - run: cargo fmt --check
 
-  ── 构建二进制（5 平台矩阵） ──────────
+  # ── 构建二进制（5 平台矩阵） ──────────
   build-binaries:
     name: Build ${{ matrix.arch }}
     needs: [check, clippy, test, fmt]

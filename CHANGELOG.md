@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+## [0.25.0] - 2026-09-07
+
+### Added
+- 依赖依赖树增强：`jex tree --verbose` 显示依赖树详细信息（版本、许可证、漏洞状态）
+- 依赖过滤：`jex tree --filter <关键词>` 按名称/许可证/漏洞过滤依赖
+- 许可证分布统计：verbose 模式下自动汇总许可证分类
+
 ## [0.24.0] - 2026-09-06
 
 ### Added

@@ -460,7 +460,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn test_merge_with_existing_invalid_coord() {
         let imported = vec!["invalid-coord".to_string()];
         let existing = HashMap::new();

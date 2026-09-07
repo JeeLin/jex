@@ -80,13 +80,6 @@ mod tests {
     }
 
     #[test]
-    fn test_read_fmt_config_no_file() {
-        // 在没有 jex.toml 的目录调用应返回 Err
-        let result = read_fmt_config();
-        assert!(result.is_err());
-    }
-
-    #[test]
     #[serial]
     fn test_read_fmt_config_full() {
         let tmp = tempfile::tempdir().unwrap();

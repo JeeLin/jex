@@ -383,4 +383,128 @@ mod tests {
         assert!(result.is_ok());
         assert!(result.unwrap().is_empty());
     }
+
+    #[test]
+    fn test_build_classpath_vec_none_deps() {
+        let lock = LockFile {
+            lockfile_version: Some(1),
+            dependencies: None,
+        };
+        let result = build_classpath_vec(&lock);
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_build_classpath_vec_resolver_error_fallback() {
+        // Use a fake coord that resolver cannot resolve, hitting the Err branch
+        let lock = LockFile {
+            lockfile_version: Some(1),
+            dependencies: Some({
+                let mut d = HashMap::new();
+                d.insert("com.nonexistent:fake-artifact-xyz999".to_string(), "0.0.1".to_string());
+                d
+            }),
+        };
+        let result = build_classpath_vec(&lock);
+        assert!(result.is_ok());
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 1);
+        assert!(paths[0].contains("fake-artifact-xyz999"));
+    }
+
+    #[test]
+    fn test_get_or_compile_cache_miss_fresh_content() {
+        // Use unique content so the cache dir doesn't already exist
+        let tmp = tempfile::tempdir().unwrap();
+        let unique = format!("unique-content-{}", uuid_v4_simple());
+        let script = tmp.path().join("fresh.java");
+        std::fs::write(&script, &unique).unwrap();
+        let meta = ScriptMeta {
+            java_version: None,
+            deps: vec![],
+            is_script: true,
+        };
+        let result = get_or_compile(&script, &meta);
+        assert!(result.is_ok());
+        let class_dir = result.unwrap();
+        assert!(class_dir.exists());
+        // No .class files yet
+        let has_class = std::fs::read_dir(&class_dir)
+            .unwrap()
+            .any(|e| {
+                e.ok()
+                    .and_then(|e| e.path().extension().map(|ext| ext == "class"))
+                    .unwrap_or(false)
+            });
+        assert!(!has_class);
+    }
+
+    #[test]
+    fn test_get_or_compile_cache_dir_exists_no_class_files() {
+        // Pre-create the cache dir with a non-.class file so the .any() check fails
+        let tmp = tempfile::tempdir().unwrap();
+        let script = tmp.path().join("test.java");
+        let content = format!("// unique no-class-file test {}", uuid_v4_simple());
+        std::fs::write(&script, &content).unwrap();
+        let meta = ScriptMeta {
+            java_version: None,
+            deps: vec![],
+            is_script: true,
+        };
+        // First call creates the cache dir
+        let dir = get_or_compile(&script, &meta).unwrap();
+        assert!(dir.exists());
+        // Put a non-.class file in the directory
+        std::fs::write(dir.join("readme.txt"), b"not a class").unwrap();
+        // Second call: dir exists but no .class files → cache miss path
+        let dir2 = get_or_compile(&script, &meta).unwrap();
+        assert_eq!(dir, dir2);
+    }
+
+    #[test]
+    fn test_script_cache_dir_structure() {
+        let result = script_cache_dir("abc123hash");
+        assert!(result.is_ok());
+        let path = result.unwrap();
+        assert!(path.to_string_lossy().contains(".jex"));
+        assert!(path.to_string_lossy().contains("cache"));
+        assert!(path.to_string_lossy().contains("scripts"));
+        assert!(path.to_string_lossy().contains("abc123hash"));
+    }
+
+    #[test]
+    fn test_deps_hash_empty() {
+        let h = deps_hash(&[]);
+        // Empty deps should produce a deterministic hash
+        let h2 = deps_hash(&[]);
+        assert_eq!(h, h2);
+    }
+
+    #[test]
+    fn test_deps_hash_deterministic() {
+        let deps = vec!["a:b:1.0".to_string(), "c:d:2.0".to_string()];
+        let h1 = deps_hash(&deps);
+        let h2 = deps_hash(&deps);
+        assert_eq!(h1, h2);
+        // Order matters
+        let deps_reversed = vec!["c:d:2.0".to_string(), "a:b:1.0".to_string()];
+        let h3 = deps_hash(&deps_reversed);
+        assert_ne!(h1, h3);
+    }
+
+    #[test]
+    fn test_content_hash_empty() {
+        let h1 = content_hash("");
+        let h2 = content_hash("");
+        assert_eq!(h1, h2);
+        assert!(!h1.is_empty());
+    }
+
+    fn uuid_v4_simple() -> String {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        format!("{:x}-{:x}", t.as_secs(), t.subsec_nanos())
+    }
 }
+

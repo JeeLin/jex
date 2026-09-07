@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{audit, cache, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
+use jex_core::{audit, audit_fix, cache, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -352,6 +352,9 @@ struct AuditArgs {
     /// 输出 JSON 格式报告
     #[arg(long)]
     json: bool,
+    /// 自动修复已知漏洞的依赖版本
+    #[arg(long)]
+    fix: bool,
 }
 
 #[derive(Args)]
@@ -758,29 +761,49 @@ fn run(cli: Cli) -> Result<()> {
             None => outdated::upgrade_all(),
         },
         Commands::Audit(a) => {
-            let vulns = audit::check_vulnerabilities()?;
-            let report = audit::generate_report(vulns);
-
-            if a.json {
-                println!("{}", serde_json::to_string_pretty(&report)?);
-            } else {
-                if report.total_vulnerabilities == 0 {
+            if a.fix {
+                let fix_report = audit_fix::audit_with_fix()?;
+                if fix_report.vulnerabilities.is_empty() {
                     println!("✅ 未发现安全漏洞");
                 } else {
-                    println!("🔒 发现 {} 个安全漏洞:\n", report.total_vulnerabilities);
-                    println!("  CRITICAL: {}", report.critical);
-                    println!("  HIGH:     {}", report.high);
-                    println!("  MEDIUM:   {}", report.medium);
-                    println!("  LOW:      {}", report.low);
-                    println!();
-
-                    for vuln in &report.vulnerabilities {
-                        println!("  {} [{}] {}:{}", vuln.severity.display(), vuln.cve_id, vuln.group, vuln.artifact);
+                    println!("🔒 发现 {} 个安全漏洞:\n", fix_report.vulnerabilities.len());
+                    for vuln in &fix_report.vulnerabilities {
+                        println!("  [{}] {}", vuln.severity, vuln.dependency);
                         println!("    {}", vuln.description);
-                        if let Some(suggestion) = audit::get_fix_suggestion(vuln) {
-                            println!("    修复建议: {}", suggestion);
+                    }
+                    if !fix_report.fixes.is_empty() {
+                        println!("\n🔧 修复建议 ({} 个):\n", fix_report.fixes.len());
+                        for fix in &fix_report.fixes {
+                            println!("  {} : {} → {}", fix.dependency, fix.current_version, fix.suggested_version);
+                            println!("    原因: {}", fix.reason);
                         }
+                    }
+                }
+            } else {
+                let vulns = audit::check_vulnerabilities()?;
+                let report = audit::generate_report(vulns);
+
+                if a.json {
+                    println!("{}", serde_json::to_string_pretty(&report)?);
+                } else {
+                    if report.total_vulnerabilities == 0 {
+                        println!("✅ 未发现安全漏洞");
+                    } else {
+                        println!("🔒 发现 {} 个安全漏洞:\n", report.total_vulnerabilities);
+                        println!("  CRITICAL: {}", report.critical);
+                        println!("  HIGH:     {}", report.high);
+                        println!("  MEDIUM:   {}", report.medium);
+                        println!("  LOW:      {}", report.low);
                         println!();
+
+                        for vuln in &report.vulnerabilities {
+                            println!("  {} [{}] {}:{}", vuln.severity.display(), vuln.cve_id, vuln.group, vuln.artifact);
+                            println!("    {}", vuln.description);
+                            if let Some(suggestion) = audit::get_fix_suggestion(vuln) {
+                                println!("    修复建议: {}", suggestion);
+                            }
+                            println!();
+                        }
                     }
                 }
             }

@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{audit, cache, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
+use jex_core::{audit, cache, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -127,6 +127,10 @@ enum Commands {
     /// 检查依赖许可证合规性
     #[command(alias = "lc")]
     LicenseCheck,
+
+    /// 检查依赖版本兼容性
+    #[command(alias = "ck")]
+    Check,
 }
 #[derive(Subcommand)]
 enum JdkCommand {
@@ -566,6 +570,27 @@ fn run(cli: Cli) -> Result<()> {
                 println!("\n未知许可证的依赖:");
                 for dep in &report.unknown {
                     println!("  {}", dep);
+                }
+            }
+            Ok(())
+        },
+        Commands::Check => {
+            let report = compat_check::check_compatibility()?;
+            println!("🔍 依赖版本兼容性检查");
+            println!("═══════════════════════════════════════");
+            println!("✅ 兼容: {} 个", report.compatible.len());
+            println!("❌ 冲突: {} 个", report.conflicts.len());
+            println!("⚠️  警告: {} 个", report.warnings.len());
+            if !report.conflicts.is_empty() {
+                println!("\n版本冲突:");
+                for conflict in &report.conflicts {
+                    println!("  {}: {}", conflict.dependency, conflict.versions.join(", "));
+                }
+            }
+            if !report.warnings.is_empty() {
+                println!("\n警告:");
+                for warning in &report.warnings {
+                    println!("  {}", warning);
                 }
             }
             Ok(())

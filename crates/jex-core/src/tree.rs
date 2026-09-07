@@ -194,9 +194,12 @@ mod tests {
         let tree = result.unwrap();
         assert_eq!(tree.root.name, "root");
         assert_eq!(tree.root.children.len(), 2);
-        assert_eq!(tree.root.children[0].name, "com.google.code.gson:gson");
-        assert_eq!(tree.root.children[0].version, "2.11.0");
-        assert_eq!(tree.root.children[1].name, "org.junit.jupiter:junit-jupiter");
+        // children order is non-deterministic (HashMap), check both exist
+        let names: Vec<_> = tree.root.children.iter().map(|c| c.name.as_str()).collect();
+        assert!(names.contains(&"com.google.code.gson:gson"));
+        assert!(names.contains(&"org.junit.jupiter:junit-jupiter"));
+        let gson = tree.root.children.iter().find(|c| c.name == "com.google.code.gson:gson").unwrap();
+        assert_eq!(gson.version, "2.11.0");
     }
 
     #[test]

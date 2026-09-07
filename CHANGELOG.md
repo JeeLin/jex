@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+## [0.23.0] - 2026-09-06
+
+### Added
+- 依赖安全审计增强：`jex audit --fix` 自动修复已知漏洞的依赖版本
+- 漏洞修复建议：显示受影响的依赖和修复版本
+
 
 ## [0.22.0] - 2026-09-06
 

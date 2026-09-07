@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-09-06
+
+### Added
+- 依赖版本兼容性检查：`jex check` 检查依赖版本兼容性
+- 版本冲突检测：显示版本冲突和不兼容警告
+- 兼容性报告：显示兼容/冲突/警告的依赖
 ## [0.21.0] - 2026-09-05
 
 ### Added

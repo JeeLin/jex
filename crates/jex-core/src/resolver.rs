@@ -273,6 +273,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_parse_coord_valid() {
+        let (g, a) = parse_coord("com.google.code.gson:gson").unwrap();
+        assert_eq!(g, "com.google.code.gson");
+        assert_eq!(a, "gson");
+    }
+
+    #[test]
+    fn test_parse_coord_invalid() {
+        assert!(parse_coord("no-colon").is_err());
+    }
+
+    #[test]
+    #[ignore] // 需要网络访问 Maven Central
     fn test_resolve_latest_gson() {
         let result = resolve_latest("com.google.code.gson:gson");
         assert!(result.is_ok());

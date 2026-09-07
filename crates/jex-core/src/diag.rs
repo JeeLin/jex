@@ -1216,4 +1216,130 @@ Found one Java-level deadlock:
         assert_eq!(snap.thread_count, 25);
         assert_eq!(snap.daemon_count, 18);
     }
+
+    #[test]
+    fn test_thread_state_unknown_symbol() {
+        let state = ThreadState::Unknown("CUSTOM".to_string());
+        assert_eq!(state.symbol(), "⚪");
+    }
+
+    #[test]
+    fn test_thread_state_labels() {
+        assert_eq!(ThreadState::Runnable.label(), "RUNNABLE");
+        assert_eq!(ThreadState::Blocked.label(), "BLOCKED");
+        assert_eq!(ThreadState::Waiting.label(), "WAITING");
+        assert_eq!(ThreadState::TimedWaiting.label(), "TIMED_WAITING");
+        assert_eq!(ThreadState::Sleeping.label(), "SLEEPING");
+        let unknown = ThreadState::Unknown("CUSTOM".to_string());
+        assert_eq!(unknown.label(), "CUSTOM");
+    }
+
+    #[test]
+    fn test_format_gc_snapshot() {
+        let s = GcSnapshot {
+            s0: 10.5,
+            s1: 20.3,
+            eden: 30.7,
+            old: 40.1,
+            meta: 50.9,
+            ccs: 60.2,
+            ygc: 100,
+            ygct: 1.5,
+            fgc: 5,
+            fgct: 0.5,
+            gct: 2.0,
+        };
+        let formatted = format_gc_snapshot(&s);
+        assert!(formatted.contains("10.50"));
+        assert!(formatted.contains("100"));
+        assert!(formatted.contains("5"));
+    }
+
+    #[test]
+    fn test_gc_table_header() {
+        let header = gc_table_header();
+        assert!(header.contains("S0%"));
+        assert!(header.contains("S1%"));
+        assert!(header.contains("Eden%"));
+        assert!(header.contains("Old%"));
+        assert!(header.contains("Meta%"));
+        assert!(header.contains("CCS%"));
+        assert!(header.contains("YGC"));
+        assert!(header.contains("YGCT"));
+        assert!(header.contains("FGC"));
+        assert!(header.contains("FGCT"));
+        assert!(header.contains("GCT"));
+    }
+
+    #[test]
+    fn test_parse_jstat_all_multi_line() {
+        let output = "S0     S1     Eden    Old\n"
+            .to_string()
+            + "  0.00  45.23  67.89  12.34  95.67  92.10   125   1.234    3   0.567  1.801\n"
+            + " 10.00  20.00  30.00  40.00  50.00  60.00   200   2.000    5   1.000  3.000\n"
+            + "--------------------------------------------------------------\n";
+        let snapshots = parse_jstat_all(&output);
+        assert_eq!(snapshots.len(), 2);
+        assert!((snapshots[0].s0 - 0.00).abs() < 0.001);
+        assert!((snapshots[1].s0 - 10.00).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_parse_jstat_all_empty() {
+        let output = "";
+        let snapshots = parse_jstat_all(output);
+        assert!(snapshots.is_empty());
+    }
+
+    #[test]
+    fn test_parse_gc_line_with_dashes() {
+        let line = "  -  45.23  67.89  12.34  95.67  92.10   -   1.234    -   0.567  1.801";
+        let snapshot = parse_gc_line(line);
+        assert!(snapshot.is_some());
+        let s = snapshot.unwrap();
+        assert!((s.s0 - 0.0).abs() < 0.001);
+        assert_eq!(s.ygc, 0);
+        assert_eq!(s.fgc, 0);
+    }
+
+    #[test]
+    fn test_thread_state_from_jcmd_sleeping() {
+        assert_eq!(ThreadState::from_jcmd("SLEEPING"), ThreadState::Sleeping);
+    }
+
+    #[test]
+    fn test_parse_threads_output_empty() {
+        let output = "";
+        let snapshot = parse_threads_output(output);
+        assert_eq!(snapshot.total, 0);
+        assert!(!snapshot.deadlock_detected);
+    }
+
+    #[test]
+    fn test_parse_threads_output_sleeping() {
+        // The parser looks for Thread.State on lines AFTER the header,
+        // so we need two lines - the first thread's state is parsed from the second line.
+        let output = r#""sleeping-thread" #10 prio=5
+java.lang.Thread.State: SLEEPING
+"#;
+        let snapshot = parse_threads_output(output);
+        assert_eq!(snapshot.total, 1);
+        assert_eq!(snapshot.threads[0].state, ThreadState::Sleeping);
+    }
+
+    #[test]
+    fn test_heap_overview_struct_fields() {
+        let h = HeapOverview {
+            heap_used: 1000,
+            heap_max: 2000,
+            eden_used: 300,
+            survivor_used: 100,
+            old_gen_used: 600,
+            meta_used: 200,
+            gc_count: 10,
+            gc_pause_ms: 5.5,
+        };
+        assert_eq!(h.heap_used, 1000);
+        assert_eq!(h.gc_count, 10);
+    }
 }

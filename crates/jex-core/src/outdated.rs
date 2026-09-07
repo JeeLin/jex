@@ -182,4 +182,60 @@ mod tests {
         assert_eq!(dep.group, cloned.group);
         assert_eq!(dep.artifact, cloned.artifact);
     }
+
+    #[test]
+    fn test_outdated_dep_vec_operations() {
+        let deps = vec![
+            OutdatedDep {
+                group: "com.a".to_string(),
+                artifact: "a".to_string(),
+                current: "1.0.0".to_string(),
+                latest: "2.0.0".to_string(),
+            },
+            OutdatedDep {
+                group: "com.b".to_string(),
+                artifact: "b".to_string(),
+                current: "3.0.0".to_string(),
+                latest: "4.0.0".to_string(),
+            },
+        ];
+        assert_eq!(deps.len(), 2);
+        assert_eq!(deps[0].group, "com.a");
+        assert_eq!(deps[1].artifact, "b");
+    }
+
+    #[test]
+    fn test_outdated_dep_json_serialization() {
+        let dep = OutdatedDep {
+            group: "org.apache".to_string(),
+            artifact: "commons".to_string(),
+            current: "1.0".to_string(),
+            latest: "1.1".to_string(),
+        };
+        let json = serde_json::to_string_pretty(&dep).unwrap();
+        assert!(json.contains("org.apache"));
+        assert!(json.contains("commons"));
+        let deser: OutdatedDep = serde_json::from_str(&json).unwrap();
+        assert_eq!(dep.group, deser.group);
+        assert_eq!(dep.artifact, deser.artifact);
+        assert_eq!(dep.current, deser.current);
+        assert_eq!(dep.latest, deser.latest);
+    }
+
+    #[test]
+    fn test_outdated_dep_display_values() {
+        let dep = OutdatedDep {
+            group: "io.netty".to_string(),
+            artifact: "netty-all".to_string(),
+            current: "4.1.0".to_string(),
+            latest: "4.2.0".to_string(),
+        };
+        // Verify all fields are accessible
+        assert!(!dep.group.is_empty());
+        assert!(!dep.artifact.is_empty());
+        assert!(!dep.current.is_empty());
+        assert!(!dep.latest.is_empty());
+        // Verify version comparison works
+        assert_ne!(dep.current, dep.latest);
+    }
 }

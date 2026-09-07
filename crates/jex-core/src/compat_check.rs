@@ -100,4 +100,59 @@ mod tests {
         assert_eq!(conflict.dependency, "tokio");
         assert_eq!(conflict.versions.len(), 2);
     }
+
+    #[test]
+    fn test_check_compatibility_empty_deps() {
+        // When no lock file exists, read_jex_lock returns empty deps.
+        // check_compatibility should succeed with an empty report.
+        let result = check_compatibility();
+        let report = result.unwrap();
+        assert!(report.compatible.is_empty());
+        assert!(report.conflicts.is_empty());
+        assert!(report.warnings.is_empty());
+    }
+
+    #[test]
+    fn test_compatibility_report_serialization() {
+        let report = CompatibilityReport {
+            compatible: vec!["serde".to_string(), "tokio".to_string()],
+            conflicts: vec![VersionConflict {
+                dependency: "log".to_string(),
+                required_by: vec!["app".to_string()],
+                versions: vec!["1.0.0".to_string(), "2.0.0".to_string()],
+            }],
+            warnings: vec!["missing version".to_string()],
+        };
+        let json = serde_json::to_string(&report).unwrap();
+        let deserialized: CompatibilityReport = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.compatible.len(), 2);
+        assert_eq!(deserialized.conflicts.len(), 1);
+        assert_eq!(deserialized.warnings.len(), 1);
+    }
+
+    #[test]
+    fn test_version_conflict_debug_clone() {
+        let conflict = VersionConflict {
+            dependency: "test".to_string(),
+            required_by: vec![],
+            versions: vec!["1.0".to_string()],
+        };
+        let debug = format!("{:?}", conflict);
+        assert!(debug.contains("test"));
+        let cloned = conflict.clone();
+        assert_eq!(cloned.dependency, "test");
+    }
+
+    #[test]
+    fn test_compatibility_report_debug_clone() {
+        let report = CompatibilityReport {
+            compatible: vec![],
+            conflicts: vec![],
+            warnings: vec![],
+        };
+        let debug = format!("{:?}", report);
+        assert!(debug.contains("CompatibilityReport"));
+        let cloned = report.clone();
+        assert!(cloned.compatible.is_empty());
+    }
 }

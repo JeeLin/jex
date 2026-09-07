@@ -381,4 +381,79 @@ mod tests {
         let result = doctor();
         let _ = result;
     }
+
+    #[test]
+    fn test_which_java_home_no_version() {
+        // 当没有设置版本时，应该返回错误
+        let result = which_java_home();
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("未设置 JDK 版本"));
+    }
+
+    #[test]
+    fn test_use_version_not_installed() {
+        // 当版本未安装时，应该返回错误
+        let result = use_version("99.99.99");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("未安装"));
+    }
+
+    #[test]
+    fn test_list_no_jdks_installed() {
+        // 当没有安装任何 JDK 时，list() 不应该 panic
+        let result = list();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_which_no_version() {
+        // 当没有设置版本时，which() 应该返回错误
+        let result = which();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_read_version_file_whitespace_only() {
+        let dir = std::env::temp_dir().join("jex-test-whitespace-version");
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("version.txt");
+        let mut f = fs::File::create(&path).unwrap();
+        writeln!(f, "  \n  \n").unwrap();
+
+        let result = read_version_file(&path).unwrap();
+        assert_eq!(result, Some("".to_string()));
+
+        let _ = fs::remove_file(&path);
+        let _ = fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn test_read_version_file_empty() {
+        let dir = std::env::temp_dir().join("jex-test-empty-version");
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("version.txt");
+        fs::File::create(&path).unwrap();
+
+        let result = read_version_file(&path).unwrap();
+        assert_eq!(result, Some("".to_string()));
+
+        let _ = fs::remove_file(&path);
+        let _ = fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn test_jdks_dir_path_components() {
+        let dir = jdks_dir().unwrap();
+        let home = crate::config::jex_home().unwrap();
+        assert_eq!(dir, home.join("jdks"));
+    }
+
+    #[test]
+    fn test_global_jdk_current_path_components() {
+        let path = global_jdk_current_path().unwrap();
+        let home = crate::config::jex_home().unwrap();
+        assert_eq!(path, home.join("jdk-current"));
+    }
 }

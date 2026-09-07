@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{audit, audit_fix, cache, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
+use jex_core::{audit, audit_fix, cache, changelog, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -131,6 +131,10 @@ enum Commands {
     /// 检查依赖版本兼容性
     #[command(alias = "ck")]
     Check,
+
+    /// 依赖版本变更日志
+    #[command(alias = "cl")]
+    Changelog,
 }
 #[derive(Subcommand)]
 enum JdkCommand {
@@ -849,6 +853,21 @@ fn run(cli: Cli) -> Result<()> {
             }
             Ok(())
         },
+        Commands::Changelog => {
+            let report = changelog::generate_changelog()?;
+            if report.entries.is_empty() {
+                println!("✅ 依赖版本无变更");
+            } else {
+                println!("📋 依赖版本变更日志 ({} 个变更):\n", report.entries.len());
+                for entry in &report.entries {
+                    println!(
+                        "  {} : {} → {}",
+                        entry.dependency, entry.old_version, entry.new_version
+                    );
+                }
+            }
+            Ok(())
+        }
     }
 }
 

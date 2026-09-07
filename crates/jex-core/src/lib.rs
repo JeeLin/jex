@@ -1,4 +1,5 @@
 pub mod analyze;
+pub mod changelog;
 pub mod audit;
 pub mod audit_fix;
 pub mod cache;

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+## [0.24.0] - 2026-09-06
+
+### Added
+- 依赖版本更新日志：`jex changelog` 显示依赖版本更新日志
+
 ## [0.23.0] - 2026-09-06
 
 ### Added

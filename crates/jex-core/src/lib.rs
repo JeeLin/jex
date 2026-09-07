@@ -27,5 +27,6 @@ pub mod search;
 pub mod template;
 pub mod tree;
 pub mod tree_verbose;
+pub mod watch;
 pub mod update;
 pub mod util;

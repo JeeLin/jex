@@ -19,4 +19,5 @@ clap = { version = "4", features = ["derive"] }
 clap_complete = "4"
 jex-core = { path = "crates/jex-core" }
 dirs = "5.0"
+notify = "7"
 tempfile = "3"

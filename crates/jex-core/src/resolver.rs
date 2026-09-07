@@ -306,4 +306,444 @@ mod tests {
         let output = format_tree(&node, "", true);
         assert!(output.contains("gson:2.11.0"));
     }
+
+    #[test]
+    fn test_format_tree_not_last() {
+        let node = DepNode {
+            group: "com.google.code.gson".to_string(),
+            artifact: "gson".to_string(),
+            version: "2.11.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![],
+        };
+        let output = format_tree(&node, "", false);
+        assert!(output.contains("├─ "));
+        // No child prefix since there are no children
+    }
+
+    #[test]
+    fn test_format_tree_with_children() {
+        let child = DepNode {
+            group: "org.apache.commons".to_string(),
+            artifact: "commons-lang3".to_string(),
+            version: "3.12.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![],
+        };
+        let parent = DepNode {
+            group: "com.example".to_string(),
+            artifact: "parent".to_string(),
+            version: "1.0.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![child],
+        };
+        let output = format_tree(&parent, "", true);
+        assert!(output.contains("└─ com.example:parent:1.0.0"));
+        assert!(output.contains("commons-lang3:3.12.0"));
+        assert!(output.contains("   └─ "));
+    }
+
+    #[test]
+    fn test_format_tree_multiple_children() {
+        let child1 = DepNode {
+            group: "g1".to_string(),
+            artifact: "a1".to_string(),
+            version: "1.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![],
+        };
+        let child2 = DepNode {
+            group: "g2".to_string(),
+            artifact: "a2".to_string(),
+            version: "2.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![],
+        };
+        let parent = DepNode {
+            group: "pg".to_string(),
+            artifact: "pa".to_string(),
+            version: "0.1".to_string(),
+            scope: "compile".to_string(),
+            children: vec![child1, child2],
+        };
+        let output = format_tree(&parent, "", false);
+        assert!(output.contains("├─ pg:pa:0.1"));
+        assert!(output.contains("│  ├─ g1:a1:1.0"));
+        assert!(output.contains("│  └─ g2:a2:2.0"));
+    }
+
+    #[test]
+    fn test_format_tree_nested() {
+        let grandchild = DepNode {
+            group: "gc".to_string(),
+            artifact: "ga".to_string(),
+            version: "1.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![],
+        };
+        let child = DepNode {
+            group: "c".to_string(),
+            artifact: "ca".to_string(),
+            version: "2.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![grandchild],
+        };
+        let root = DepNode {
+            group: "r".to_string(),
+            artifact: "ra".to_string(),
+            version: "3.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![child],
+        };
+        let output = format_tree(&root, "", false);
+        assert!(output.contains("gc:ga:1.0"));
+    }
+
+    #[test]
+    fn test_format_tree_with_prefix_and_not_last() {
+        let node = DepNode {
+            group: "g".to_string(),
+            artifact: "a".to_string(),
+            version: "1.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![],
+        };
+        let output = format_tree(&node, "  ", false);
+        assert!(output.contains("  ├─ g:a:1.0"));
+    }
+
+    #[test]
+    fn test_format_tree_not_last_with_prefix_and_children() {
+        let child = DepNode {
+            group: "cg".to_string(),
+            artifact: "ca".to_string(),
+            version: "2.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![],
+        };
+        let parent = DepNode {
+            group: "pg".to_string(),
+            artifact: "pa".to_string(),
+            version: "1.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![child],
+        };
+        let output = format_tree(&parent, "  ", false);
+        assert!(output.contains("  ├─ pg:pa:1.0"));
+        assert!(output.contains("  │  └─ cg:ca:2.0"));
+    }
+
+    #[test]
+    fn test_parse_pom_empty() {
+        let result = parse_pom_dependencies("").unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_pom_no_dependencies() {
+        let pom = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <groupId>com.example</groupId>
+    <artifactId>my-project</artifactId>
+    <version>1.0.0</version>
+</project>"#;
+        let result = parse_pom_dependencies(pom).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_pom_single_dependency() {
+        let pom = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <dependencies>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.11.0</version>
+        </dependency>
+    </dependencies>
+</project>"#;
+        let result = parse_pom_dependencies(pom).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], ("com.google.code.gson".to_string(), "gson".to_string(), "2.11.0".to_string()));
+    }
+
+    #[test]
+    fn test_parse_pom_runtime_scope() {
+        let pom = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <dependencies>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.9</version>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+</project>"#;
+        let result = parse_pom_dependencies(pom).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].0, "org.slf4j");
+    }
+
+    #[test]
+    fn test_parse_pom_test_scope_excluded() {
+        let pom = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>"#;
+        let result = parse_pom_dependencies(pom).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_pom_optional_dependency_excluded() {
+        let pom = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <dependencies>
+        <dependency>
+            <groupId>com.google.errorprone</groupId>
+            <artifactId>error_prone_annotations</artifactId>
+            <version>2.18.0</version>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>"#;
+        let result = parse_pom_dependencies(pom).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_pom_multiple_dependencies() {
+        let pom = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <dependencies>
+        <dependency>
+            <groupId>g1</groupId>
+            <artifactId>a1</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>g2</groupId>
+            <artifactId>a2</artifactId>
+            <version>2.0</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>g3</groupId>
+            <artifactId>a3</artifactId>
+            <version>3.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>g4</groupId>
+            <artifactId>a4</artifactId>
+            <version>4.0</version>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>"#;
+        let result = parse_pom_dependencies(pom).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].0, "g1");
+        assert_eq!(result[1].0, "g2");
+    }
+
+    #[test]
+    fn test_parse_pom_missing_version_excluded() {
+        let pom = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <dependencies>
+        <dependency>
+            <groupId>g1</groupId>
+            <artifactId>a1</artifactId>
+        </dependency>
+    </dependencies>
+</project>"#;
+        let result = parse_pom_dependencies(pom).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_pom_missing_group_excluded() {
+        let pom = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <dependencies>
+        <dependency>
+            <artifactId>a1</artifactId>
+            <version>1.0</version>
+        </dependency>
+    </dependencies>
+</project>"#;
+        let result = parse_pom_dependencies(pom).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_pom_missing_artifact_excluded() {
+        let pom = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <dependencies>
+        <dependency>
+            <groupId>g1</groupId>
+            <version>1.0</version>
+        </dependency>
+    </dependencies>
+</project>"#;
+        let result = parse_pom_dependencies(pom).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_pom_optional_false_not_excluded() {
+        let pom = r#"<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <dependencies>
+        <dependency>
+            <groupId>g1</groupId>
+            <artifactId>a1</artifactId>
+            <version>1.0</version>
+            <optional>false</optional>
+        </dependency>
+    </dependencies>
+</project>"#;
+        let result = parse_pom_dependencies(pom).unwrap();
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_resolve_node_cycle_detection() {
+        let mut visited = HashSet::new();
+        visited.insert("com.example:lib".to_string());
+        let result = resolve_node("com.example", "lib", Some("1.0"), &mut visited, 0).unwrap();
+        assert_eq!(result.version, "1.0");
+        assert!(result.children.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_node_depth_limit() {
+        let mut visited = HashSet::new();
+        let result = resolve_node("com.example", "lib", Some("1.0"), &mut visited, 8).unwrap();
+        assert_eq!(result.version, "1.0");
+        assert!(result.children.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_node_version_none() {
+        let mut visited = HashSet::new();
+        let result = resolve_node("com.example", "lib", None, &mut visited, 8).unwrap();
+        assert_eq!(result.version, "?");
+    }
+
+    #[test]
+    fn test_dep_node_clone() {
+        let node = DepNode {
+            group: "g".to_string(),
+            artifact: "a".to_string(),
+            version: "1.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![],
+        };
+        let cloned = node.clone();
+        assert_eq!(cloned.group, "g");
+        assert_eq!(cloned.artifact, "a");
+        assert_eq!(cloned.version, "1.0");
+    }
+
+    #[test]
+    fn test_dep_node_debug() {
+        let node = DepNode {
+            group: "g".to_string(),
+            artifact: "a".to_string(),
+            version: "1.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![],
+        };
+        let debug_str = format!("{:?}", node);
+        assert!(debug_str.contains("DepNode"));
+        assert!(debug_str.contains("g"));
+    }
+
+    #[test]
+    fn test_dep_node_with_children_clone() {
+        let child = DepNode {
+            group: "cg".to_string(),
+            artifact: "ca".to_string(),
+            version: "2.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![],
+        };
+        let parent = DepNode {
+            group: "pg".to_string(),
+            artifact: "pa".to_string(),
+            version: "1.0".to_string(),
+            scope: "compile".to_string(),
+            children: vec![child],
+        };
+        let cloned = parent.clone();
+        assert_eq!(cloned.children.len(), 1);
+        assert_eq!(cloned.children[0].artifact, "ca");
+    }
+
+    #[test]
+    fn test_search_response_deserialize_empty() {
+        let json = r#"{"response": null}"#;
+        let sr: SearchResponse = serde_json::from_str(json).unwrap();
+        assert!(sr.response.is_none());
+    }
+
+    #[test]
+    fn test_search_response_deserialize_full() {
+        let json = r#"{"response": {"docs": [{"v": "2.11.0"}, {"v": "2.10.0"}]}}"#;
+        let sr: SearchResponse = serde_json::from_str(json).unwrap();
+        let docs = sr.response.unwrap().docs.unwrap();
+        assert_eq!(docs.len(), 2);
+        assert_eq!(docs[0].version.as_deref(), Some("2.11.0"));
+        assert_eq!(docs[1].version.as_deref(), Some("2.10.0"));
+    }
+
+    #[test]
+    fn test_search_response_deserialize_no_docs() {
+        let json = r#"{"response": {"docs": null}}"#;
+        let sr: SearchResponse = serde_json::from_str(json).unwrap();
+        let docs = sr.response.unwrap().docs.unwrap_or_default();
+        assert!(docs.is_empty());
+    }
+
+    #[test]
+    fn test_search_response_deserialize_no_version() {
+        let json = r#"{"response": {"docs": [{}]}}"#;
+        let sr: SearchResponse = serde_json::from_str(json).unwrap();
+        let docs = sr.response.unwrap().docs.unwrap();
+        assert_eq!(docs.len(), 1);
+        assert!(docs[0].version.is_none());
+    }
+
+    #[test]
+    fn test_search_response_deserialize_invalid_json() {
+        let result = serde_json::from_str::<SearchResponse>("not json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_coord_too_many_parts() {
+        let (g, a) = parse_coord("g:a:extra").unwrap();
+        assert_eq!(g, "g");
+        assert_eq!(a, "a");
+    }
+
+    #[test]
+    fn test_parse_pom_malformed_xml() {
+        let pom = "<not valid xml>";
+        let result = parse_pom_dependencies(pom).unwrap();
+        assert!(result.is_empty());
+    }
+
 }

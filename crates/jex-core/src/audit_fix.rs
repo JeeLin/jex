@@ -115,4 +115,129 @@ mod tests {
         assert_eq!(vuln.severity, "HIGH");
         assert!(vuln.fixed_version.is_some());
     }
+    #[test]
+    fn test_fix_suggestion_struct() {
+        let fix = FixSuggestion {
+            dependency: "test:dep".to_string(),
+            current_version: "1.0.0".to_string(),
+            suggested_version: "2.0.0".to_string(),
+            reason: "vulnerability".to_string(),
+        };
+        assert_eq!(fix.suggested_version, "2.0.0");
+    }
+
+    #[test]
+    fn test_check_vulnerability_log4j_core() {
+        let result = check_vulnerability("org.apache.logging.log4j:log4j-core", "2.14.0");
+        assert!(result.is_some());
+        let v = result.unwrap();
+        assert_eq!(v.severity, "HIGH");
+        assert!(v.fixed_version.is_some());
+    }
+
+    #[test]
+    fn test_check_vulnerability_log4j_api() {
+        let result = check_vulnerability("org.apache.logging.log4j:log4j-api", "2.14.0");
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_check_vulnerability_safe_dep() {
+        let result = check_vulnerability("com.google.code.gson:gson", "2.11.0");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_check_vulnerability_bad_coord() {
+        let result = check_vulnerability("no-colon", "1.0.0");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_generate_fix_suggestion_with_fixed_version() {
+        let vuln = Vulnerability {
+            dependency: "test:dep".to_string(),
+            severity: "HIGH".to_string(),
+            description: "RCE".to_string(),
+            fixed_version: Some("2.17.0".to_string()),
+        };
+        let fix = generate_fix_suggestion("test:dep", "1.0.0", &vuln);
+        assert!(fix.is_some());
+        let f = fix.unwrap();
+        assert_eq!(f.suggested_version, "2.17.0");
+        assert_eq!(f.reason, "RCE");
+    }
+
+    #[test]
+    fn test_generate_fix_suggestion_no_fixed_version() {
+        let vuln = Vulnerability {
+            dependency: "test:dep".to_string(),
+            severity: "MEDIUM".to_string(),
+            description: "issue".to_string(),
+            fixed_version: None,
+        };
+        let fix = generate_fix_suggestion("test:dep", "1.0.0", &vuln);
+        assert!(fix.is_none());
+    }
+
+    #[test]
+    fn test_vulnerability_serde() {
+        let vuln = Vulnerability {
+            dependency: "a:b".to_string(),
+            severity: "LOW".to_string(),
+            description: "test".to_string(),
+            fixed_version: Some("1.1.0".to_string()),
+        };
+        let json = serde_json::to_string(&vuln).unwrap();
+        let deser: Vulnerability = serde_json::from_str(&json).unwrap();
+        assert_eq!(deser.severity, "LOW");
+    }
+
+    #[test]
+    fn test_fix_suggestion_serde() {
+        let fix = FixSuggestion {
+            dependency: "x:y".to_string(),
+            current_version: "1".to_string(),
+            suggested_version: "2".to_string(),
+            reason: "r".to_string(),
+        };
+        let json = serde_json::to_string(&fix).unwrap();
+        let deser: FixSuggestion = serde_json::from_str(&json).unwrap();
+        assert_eq!(deser.suggested_version, "2");
+    }
+
+    #[test]
+    fn test_audit_fix_report_serde() {
+        let report = AuditFixReport {
+            vulnerabilities: vec![],
+            fixes: vec![],
+        };
+        let json = serde_json::to_string(&report).unwrap();
+        let deser: AuditFixReport = serde_json::from_str(&json).unwrap();
+        assert!(deser.vulnerabilities.is_empty());
+    }
+
+    #[test]
+    fn test_vulnerability_clone() {
+        let v = Vulnerability {
+            dependency: "a:b".to_string(),
+            severity: "HIGH".to_string(),
+            description: "d".to_string(),
+            fixed_version: None,
+        };
+        let cloned = v.clone();
+        assert_eq!(cloned.dependency, "a:b");
+    }
+
+    #[test]
+    fn test_fix_suggestion_clone() {
+        let f = FixSuggestion {
+            dependency: "a:b".to_string(),
+            current_version: "1".to_string(),
+            suggested_version: "2".to_string(),
+            reason: "r".to_string(),
+        };
+        let cloned = f.clone();
+        assert_eq!(cloned.reason, "r");
+    }
 }

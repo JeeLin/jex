@@ -187,4 +187,134 @@ mod tests {
         assert!(!is_license_compatible("GPL-3.0"));
         assert!(!is_license_compatible("Unknown"));
     }
+    #[test]
+    fn test_license_report_struct() {
+        let report = LicenseReport {
+            compatible: vec!["MIT".to_string()],
+            incompatible: vec!["GPL-2.0".to_string()],
+            unknown: vec!["Custom".to_string()],
+        };
+        assert_eq!(report.compatible.len(), 1);
+        assert_eq!(report.incompatible.len(), 1);
+        assert_eq!(report.unknown.len(), 1);
+    }
+
+    #[test]
+    fn test_extract_license_from_pom_mit() {
+        let pom = r#"<license><name>MIT</name></license>"#;
+        assert_eq!(extract_license_from_pom(pom), Some("MIT".to_string()));
+    }
+
+    #[test]
+    fn test_extract_license_from_pom_apache() {
+        let pom = r#"<license><name>Apache License, Version 2.0</name></license>"#;
+        assert_eq!(extract_license_from_pom(pom), Some("Apache-2.0".to_string()));
+    }
+
+    #[test]
+    fn test_extract_license_from_pom_bsd() {
+        let pom = r#"<license><name>BSD License</name></license>"#;
+        assert_eq!(extract_license_from_pom(pom), Some("BSD-3-Clause".to_string()));
+    }
+
+    #[test]
+    fn test_extract_license_from_pom_isc() {
+        let pom = r#"<license><name>ISC License</name></license>"#;
+        assert_eq!(extract_license_from_pom(pom), Some("ISC".to_string()));
+    }
+
+    #[test]
+    fn test_extract_license_from_pom_unlicense() {
+        let pom = r#"<license><name>The Unlicense</name></license>"#;
+        assert_eq!(extract_license_from_pom(pom), Some("Unlicense".to_string()));
+    }
+
+    #[test]
+    fn test_extract_license_from_pom_spdx_url() {
+        let pom = r#"<url>https://spdx.org/licenses/MIT.html</url>"#;
+        assert_eq!(extract_license_from_pom(pom), Some("MIT.html".to_string()));
+    }
+
+    #[test]
+    fn test_extract_license_from_pom_spdx_url_no_slash() {
+        let pom = r#"<url>https://example.com</url>"#;
+        assert_eq!(extract_license_from_pom(pom), None);
+    }
+
+    #[test]
+    fn test_extract_license_from_pom_no_license() {
+        let pom = r#"<project></project>"#;
+        assert_eq!(extract_license_from_pom(pom), None);
+    }
+
+    #[test]
+    fn test_is_license_compatible_weak_copyleft() {
+        assert!(is_license_compatible("LGPL-2.1"));
+        assert!(is_license_compatible("LGPL-3.0"));
+        assert!(is_license_compatible("MPL-2.0"));
+        assert!(is_license_compatible("EPL-1.0"));
+        assert!(is_license_compatible("EPL-2.0"));
+    }
+
+    #[test]
+    fn test_is_license_compatible_permissive() {
+        assert!(is_license_compatible("MIT"));
+        assert!(is_license_compatible("Apache-2.0"));
+        assert!(is_license_compatible("BSD-2-Clause"));
+        assert!(is_license_compatible("BSD-3-Clause"));
+        assert!(is_license_compatible("ISC"));
+        assert!(is_license_compatible("Unlicense"));
+        assert!(is_license_compatible("0BSD"));
+        assert!(is_license_compatible("Zlib"));
+    }
+
+    #[test]
+    fn test_is_license_compatible_incompatible() {
+        assert!(!is_license_compatible("GPL-2.0"));
+        assert!(!is_license_compatible("GPL-3.0"));
+        assert!(!is_license_compatible("AGPL-3.0"));
+        assert!(!is_license_compatible("SSPL-1.0"));
+        assert!(!is_license_compatible(""));
+    }
+
+    #[test]
+    fn test_check_dependency_license_unknown_coord() {
+        // A coord with too many parts should return None from query_maven_pom
+        let result = check_dependency_license("invalid:too:many:parts").unwrap();
+        assert_eq!(result.spdx_id, "Unknown");
+        assert!(!result.is_compatible);
+        assert!(!result.issues.is_empty());
+    }
+
+    #[test]
+    fn test_check_dependency_license_bad_coord() {
+        let result = check_dependency_license("single-part").unwrap();
+        assert_eq!(result.spdx_id, "Unknown");
+        assert!(!result.is_compatible);
+    }
+
+    #[test]
+    fn test_license_check_result_serde() {
+        let result = LicenseCheckResult {
+            spdx_id: "Apache-2.0".to_string(),
+            is_compatible: true,
+            issues: vec!["note".to_string()],
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        let deserialized: LicenseCheckResult = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.spdx_id, "Apache-2.0");
+        assert!(deserialized.is_compatible);
+    }
+
+    #[test]
+    fn test_license_report_serde() {
+        let report = LicenseReport {
+            compatible: vec![],
+            incompatible: vec![],
+            unknown: vec![],
+        };
+        let json = serde_json::to_string(&report).unwrap();
+        let deserialized: LicenseReport = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.compatible.is_empty());
+    }
 }

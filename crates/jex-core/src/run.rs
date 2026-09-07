@@ -269,6 +269,7 @@ pub fn run(file: &str, args: &[String]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use crate::deps::LockFile;
     use std::collections::HashMap;
 
@@ -372,6 +373,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_collect_java_files_empty_dir() {
         let tmp = tempfile::tempdir().unwrap();
         let orig = std::env::current_dir().unwrap();

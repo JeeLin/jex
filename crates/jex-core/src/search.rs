@@ -187,4 +187,48 @@ mod tests {
         assert!(url.contains("rows=10"));
         assert!(url.contains("wt=json"));
     }
+
+    #[test]
+    fn test_search_response_no_docs_field() {
+        let json = r#"{"response": {}}"#;
+        let response: SearchResponse = serde_json::from_str(json).unwrap();
+        let docs = response.response.unwrap().docs;
+        assert!(docs.is_none());
+    }
+
+    #[test]
+    fn test_search_multiple_docs() {
+        let json = r#"{
+            "response": {
+                "docs": [
+                    {"g": "com.google", "a": "gson", "latestVersion": "2.11.0", "versionCount": 30, "description": "Gson", "ec": ["jar"]},
+                    {"g": "org.apache", "a": "commons-lang", "latestVersion": "3.14.0", "versionCount": 20, "description": "Apache Commons", "ec": ["jar", "sources"]}
+                ]
+            }
+        }"#;
+        let response: SearchResponse = serde_json::from_str(json).unwrap();
+        let docs = response.response.unwrap().docs.unwrap();
+        assert_eq!(docs.len(), 2);
+        assert_eq!(docs[0].group_id.as_deref(), Some("com.google"));
+        assert_eq!(docs[1].group_id.as_deref(), Some("org.apache"));
+    }
+
+    #[test]
+    fn test_search_doc_with_all_none_optional() {
+        let json = r#"{
+            "response": {
+                "docs": [
+                    {"g": "org", "a": "lib"}
+                ]
+            }
+        }"#;
+        let response: SearchResponse = serde_json::from_str(json).unwrap();
+        let doc = &response.response.unwrap().docs.unwrap()[0];
+        assert_eq!(doc.group_id.as_deref(), Some("org"));
+        assert_eq!(doc.artifact_id.as_deref(), Some("lib"));
+        assert!(doc.latest_version.is_none());
+        assert!(doc.version_count.is_none());
+        assert!(doc.description.is_none());
+        assert!(doc.extensions.is_none());
+    }
 }

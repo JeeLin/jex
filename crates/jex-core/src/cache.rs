@@ -189,4 +189,98 @@ mod tests {
         let path = cache_path().unwrap();
         assert!(path.to_string_lossy().contains(".jex") || path.to_string_lossy().contains("coursier"));
     }
+    #[test]
+    fn test_dir_size_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let size = dir_size(dir.path()).unwrap();
+        assert_eq!(size, 0);
+    }
+
+    #[test]
+    fn test_dir_size_with_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.txt"), vec![0u8; 100]).unwrap();
+        std::fs::write(dir.path().join("b.txt"), vec![0u8; 200]).unwrap();
+        let size = dir_size(dir.path()).unwrap();
+        assert_eq!(size, 300);
+    }
+
+    #[test]
+    fn test_dir_size_recursive() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.txt"), vec![0u8; 100]).unwrap();
+        let sub = dir.path().join("sub");
+        std::fs::create_dir(&sub).unwrap();
+        std::fs::write(sub.join("b.txt"), vec![0u8; 200]).unwrap();
+        let size = dir_size(dir.path()).unwrap();
+        assert_eq!(size, 300);
+    }
+
+    #[test]
+    fn test_dir_size_not_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("file.txt");
+        std::fs::write(&file, vec![0u8; 50]).unwrap();
+        let size = dir_size(&file).unwrap();
+        assert_eq!(size, 0);
+    }
+
+    #[test]
+    fn test_clean_cache_nonexistent() {
+        let dir = tempfile::tempdir().unwrap();
+        let nonexistent = dir.path().join("does_not_exist");
+        // clean_cache for a nonexistent path should print warning and return Ok
+        // We can't easily test global=true as it uses cache_path
+        // Instead test the non-global path behavior by creating a temp cache dir
+        let cache = std::env::current_dir().unwrap().join(".jex").join("cache");
+        // Just verify the function works when cache doesn't exist
+        if !cache.exists() {
+            let result = clean_cache(false);
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_cache_entry_serde() {
+        let entry = CacheEntry {
+            name: "dep.jar".to_string(),
+            size: 2048,
+            modified: "2026-09-07T10:00:00".to_string(),
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        let deserialized: CacheEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.name, "dep.jar");
+        assert_eq!(deserialized.size, 2048);
+        assert_eq!(deserialized.modified, "2026-09-07T10:00:00");
+    }
+
+    #[test]
+    fn test_cache_entry_debug() {
+        let entry = CacheEntry {
+            name: "test".to_string(),
+            size: 0,
+            modified: String::new(),
+        };
+        let debug_str = format!("{:?}", entry);
+        assert!(debug_str.contains("test"));
+    }
+
+    #[test]
+    fn test_cache_entry_clone() {
+        let entry = CacheEntry {
+            name: "x".to_string(),
+            size: 42,
+            modified: "y".to_string(),
+        };
+        let cloned = entry.clone();
+        assert_eq!(entry.name, cloned.name);
+        assert_eq!(entry.size, cloned.size);
+    }
+
+    #[test]
+    fn test_format_size_edge_cases() {
+        assert_eq!(format_size(1023), "1023 B");
+        assert_eq!(format_size(1024 * 1024 - 1), "1024.0 KB");
+        assert_eq!(format_size(1024 * 1024 * 1024 - 1), "1024.0 MB");
+    }
 }

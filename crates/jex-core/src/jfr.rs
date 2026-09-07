@@ -583,6 +583,42 @@ pub fn display_summary(summary: &JfrSummary) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::os::unix::process::ExitStatusExt;
+
+    /// Helper to encode a value as varint bytes
+    fn encode_varint(mut val: u64) -> Vec<u8> {
+        let mut buf = Vec::new();
+        loop {
+            let mut byte = (val & 0x7F) as u8;
+            val >>= 7;
+            if val > 0 {
+                byte |= 0x80;
+            }
+            buf.push(byte);
+            if val == 0 {
+                break;
+            }
+        }
+        buf
+    }
+
+    fn build_event_record(event_type_id: u64, ts_delta: u64, dur: u64) -> Vec<u8> {
+        let et_bytes = encode_varint(event_type_id);
+        let ts_bytes = encode_varint(ts_delta);
+        let dur_bytes = encode_varint(dur);
+        let payload_len = et_bytes.len() + ts_bytes.len() + dur_bytes.len();
+        let min_size = payload_len.max(10);
+        let total = 1 + 4 + min_size;
+        let mut record = vec![0u8; total];
+        record[0] = 0x30;
+        let size = total as u32;
+        record[1..5].copy_from_slice(&size.to_be_bytes());
+        let mut pos = 5;
+        for b in &et_bytes { record[pos] = *b; pos += 1; }
+        for b in &ts_bytes { record[pos] = *b; pos += 1; }
+        for b in &dur_bytes { record[pos] = *b; pos += 1; }
+        record
+    }
 
     #[test]
     fn test_event_type_mapping() {
@@ -609,49 +645,421 @@ mod tests {
     }
 
     #[test]
+    fn test_event_type_from_jfr_name_all_variants() {
+        assert_eq!(EventType::from_jfr_name("jdk.NativeMethodSample"), EventType::CpuSampling);
+        assert_eq!(EventType::from_jfr_name("jdk.GCHeapSummary"), EventType::GcEvent);
+        assert_eq!(EventType::from_jfr_name("jdk.GCPhasePause"), EventType::GcEvent);
+        assert_eq!(EventType::from_jfr_name("jdk.FileWrite"), EventType::FileWrite);
+        assert_eq!(EventType::from_jfr_name("jdk.SocketRead"), EventType::SocketRead);
+        assert_eq!(EventType::from_jfr_name("jdk.SocketWrite"), EventType::SocketWrite);
+        assert_eq!(EventType::from_jfr_name("jdk.JavaMonitorWait"), EventType::ThreadBlock);
+        assert_eq!(EventType::from_jfr_name("jdk.ObjectAllocationOutsideTLAB"), EventType::MemAlloc);
+        assert_eq!(EventType::from_jfr_name("jdk.AllocationRequiringGC"), EventType::MemAlloc);
+        match EventType::from_jfr_name("jdk.CustomEvent") {
+            EventType::Unknown(s) => assert_eq!(s, "jdk.CustomEvent"),
+            _ => panic!("Expected Unknown variant"),
+        }
+    }
+
+    #[test]
+    fn test_display_name_all_variants() {
+        assert_eq!(EventType::CpuSampling.display_name(), "CPU 采样");
+        assert_eq!(EventType::GcEvent.display_name(), "GC 事件");
+        assert_eq!(EventType::FileRead.display_name(), "文件读取");
+        assert_eq!(EventType::FileWrite.display_name(), "文件写入");
+        assert_eq!(EventType::SocketRead.display_name(), "网络读取");
+        assert_eq!(EventType::SocketWrite.display_name(), "网络写入");
+        assert_eq!(EventType::ThreadBlock.display_name(), "线程阻塞");
+        assert_eq!(EventType::MemAlloc.display_name(), "内存分配");
+        assert_eq!(EventType::Unknown("x".into()).display_name(), "其他");
+    }
+
+    #[test]
     fn test_read_varint() {
-        // 单字节: 0x05 = 5
+        // Single byte: 0x05 = 5
         let data = [0x05];
         let mut pos = 0;
         assert_eq!(read_varint(&data, &mut pos), Some(5));
         assert_eq!(pos, 1);
 
-        // 双字节: 0x80 0x01 = 128
+        // Two bytes: 0x80 0x01 = 128
         let data = [0x80, 0x01];
         let mut pos = 0;
         assert_eq!(read_varint(&data, &mut pos), Some(128));
         assert_eq!(pos, 2);
 
-        // 空数据
+        // Empty data
         let data: [u8; 0] = [];
         let mut pos = 0;
         assert_eq!(read_varint(&data, &mut pos), None);
     }
 
     #[test]
+    fn test_read_varint_multi_byte() {
+        // 3-byte varint: 0x80 0x80 0x01 = 16384
+        let data = [0x80, 0x80, 0x01];
+        let mut pos = 0;
+        assert_eq!(read_varint(&data, &mut pos), Some(16384));
+        assert_eq!(pos, 3);
+    }
+
+    #[test]
     fn test_parse_jfr_header_invalid() {
-        // 太小的文件
+        // Too small
         let data = vec![0u8; 10];
         assert!(parse_jfr_header(&data).is_err());
+    }
 
-        // 错误的 magic number
-        let mut data = [0u8; 68];
+    #[test]
+    fn test_parse_jfr_header_valid() {
+        let mut data = vec![0u8; 100];
+        data[4..6].copy_from_slice(&3u16.to_be_bytes());
+        data[6..8].copy_from_slice(&1u16.to_be_bytes());
+        data[8..16].copy_from_slice(&512u64.to_be_bytes());
+        data[16..24].copy_from_slice(&999u64.to_be_bytes());
+        data[24..32].copy_from_slice(&2000u64.to_be_bytes());
+        let header = parse_jfr_header(&data).unwrap();
+        assert_eq!(header.major_version, 3);
+        assert_eq!(header.minor_version, 1);
+        assert_eq!(header.chunk_size, 512);
+        assert_eq!(header.start_time, 999);
+        assert_eq!(header.duration, 2000);
+    }
+
+    #[test]
+    fn test_parse_jfr_too_small() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("small.jfr");
+        std::fs::write(&path, &vec![0u8; 10]).unwrap();
+        let result = parse_jfr(&path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("太小"));
+    }
+
+    #[test]
+    fn test_parse_jfr_bad_magic() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad_magic.jfr");
+        let mut data = vec![0u8; 68];
         data[0..4].copy_from_slice(b"TEST");
-        // parse_jfr_header 不检查 magic（由 parse_jfr 检查），但大小应该够
+        std::fs::write(&path, &data).unwrap();
+        let result = parse_jfr(&path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("magic"));
+    }
+
+    #[test]
+    fn test_parse_jfr_valid_no_events() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("valid.jfr");
+        let mut data = vec![0u8; 100];
+        data[0..4].copy_from_slice(b"FLR\0");
+        data[4..6].copy_from_slice(&2u16.to_be_bytes());
+        data[6..8].copy_from_slice(&0u16.to_be_bytes());
+        data[8..16].copy_from_slice(&100u64.to_be_bytes());
+        data[16..24].copy_from_slice(&1000u64.to_be_bytes());
+        data[24..32].copy_from_slice(&5000u64.to_be_bytes());
+        std::fs::write(&path, &data).unwrap();
+        let (header, events) = parse_jfr(&path).unwrap();
+        assert_eq!(header.major_version, 2);
+        assert_eq!(header.start_time, 1000);
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn test_parse_jfr_events_empty_data() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 1024, start_time: 0, duration: 0,
+        };
+        let data = vec![0u8; 68];
+        let events = parse_jfr_events(&data, &header).unwrap();
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn test_extract_event_too_short() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 0, start_time: 0, duration: 0,
+        };
+        let record = vec![0u8; 5];
+        assert!(extract_event_from_record(&record, &header).is_none());
+    }
+
+    #[test]
+    fn test_extract_event_non_event_record() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 0, start_time: 0, duration: 0,
+        };
+        let record = vec![0x10u8; 20];
+        assert!(extract_event_from_record(&record, &header).is_none());
+    }
+
+    #[test]
+    fn test_extract_event_valid() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 0, start_time: 1000, duration: 0,
+        };
+        let record = build_event_record(101, 10, 5);
+        let event = extract_event_from_record(&record, &header).unwrap();
+        assert_eq!(event.event_type, EventType::CpuSampling);
+        assert_eq!(event.timestamp, 1010);
+        assert_eq!(event.duration, 5);
+    }
+
+    #[test]
+    fn test_extract_event_gc() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 0, start_time: 0, duration: 0,
+        };
+        let record = build_event_record(160, 0, 0);
+        let event = extract_event_from_record(&record, &header).unwrap();
+        assert_eq!(event.event_type, EventType::GcEvent);
+    }
+
+    #[test]
+    fn test_extract_event_file_read() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 0, start_time: 0, duration: 0,
+        };
+        let record = build_event_record(110, 0, 0);
+        let event = extract_event_from_record(&record, &header).unwrap();
+        assert_eq!(event.event_type, EventType::FileRead);
+    }
+
+    #[test]
+    fn test_extract_event_file_write() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 0, start_time: 0, duration: 0,
+        };
+        let record = build_event_record(111, 0, 0);
+        let event = extract_event_from_record(&record, &header).unwrap();
+        assert_eq!(event.event_type, EventType::FileWrite);
+    }
+
+    #[test]
+    fn test_extract_event_socket_read() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 0, start_time: 0, duration: 0,
+        };
+        let record = build_event_record(120, 0, 0);
+        let event = extract_event_from_record(&record, &header).unwrap();
+        assert_eq!(event.event_type, EventType::SocketRead);
+    }
+
+    #[test]
+    fn test_extract_event_socket_write() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 0, start_time: 0, duration: 0,
+        };
+        let record = build_event_record(121, 0, 0);
+        let event = extract_event_from_record(&record, &header).unwrap();
+        assert_eq!(event.event_type, EventType::SocketWrite);
+    }
+
+    #[test]
+    fn test_extract_event_thread_block() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 0, start_time: 0, duration: 0,
+        };
+        let record = build_event_record(130, 0, 0);
+        let event = extract_event_from_record(&record, &header).unwrap();
+        assert_eq!(event.event_type, EventType::ThreadBlock);
+    }
+
+    #[test]
+    fn test_extract_event_mem_alloc() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 0, start_time: 0, duration: 0,
+        };
+        let record = build_event_record(140, 0, 0);
+        let event = extract_event_from_record(&record, &header).unwrap();
+        assert_eq!(event.event_type, EventType::MemAlloc);
+    }
+
+    #[test]
+    fn test_extract_event_unknown() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 0, start_time: 0, duration: 0,
+        };
+        let record = build_event_record(999, 0, 0);
+        let event = extract_event_from_record(&record, &header).unwrap();
+        match event.event_type {
+            EventType::Unknown(s) => assert_eq!(s, "id:999"),
+            _ => panic!("Expected Unknown"),
+        }
+        assert!(event.details.contains("999"));
     }
 
     #[test]
     fn test_summarize_empty() {
         let header = JfrHeader {
-            major_version: 2,
-            minor_version: 0,
-            chunk_size: 1024,
-            start_time: 0,
-            duration: 10_000_000_000, // 10s
+            major_version: 2, minor_version: 0,
+            chunk_size: 1024, start_time: 0,
+            duration: 10_000_000_000,
         };
         let events = vec![];
         let summary = summarize(&events, &header);
         assert_eq!(summary.total_events, 0);
         assert!((summary.duration_secs - 10.0).abs() < 0.01);
     }
+
+    #[test]
+    fn test_summarize_duration_zero() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 1024, start_time: 0, duration: 0,
+        };
+        let summary = summarize(&[], &header);
+        assert_eq!(summary.duration_secs, 0.0);
+    }
+
+    #[test]
+    fn test_summarize_with_events() {
+        let header = JfrHeader {
+            major_version: 2, minor_version: 0,
+            chunk_size: 1024, start_time: 0,
+            duration: 5_000_000_000,
+        };
+        let events = vec![
+            JfrEvent {
+                timestamp: 100, event_type: EventType::GcEvent,
+                duration: 10_000_000, thread: None, details: String::new(),
+            },
+            JfrEvent {
+                timestamp: 200, event_type: EventType::FileRead,
+                duration: 0, thread: None, details: String::new(),
+            },
+            JfrEvent {
+                timestamp: 300, event_type: EventType::ThreadBlock,
+                duration: 5_000_000, thread: None, details: String::new(),
+            },
+            JfrEvent {
+                timestamp: 400, event_type: EventType::MemAlloc,
+                duration: 0, thread: None, details: String::new(),
+            },
+            JfrEvent {
+                timestamp: 500, event_type: EventType::FileWrite,
+                duration: 0, thread: None, details: String::new(),
+            },
+            JfrEvent {
+                timestamp: 600, event_type: EventType::CpuSampling,
+                duration: 0, thread: None, details: String::new(),
+            },
+        ];
+        let summary = summarize(&events, &header);
+        assert_eq!(summary.total_events, 6);
+        assert_eq!(summary.gc_count, 1);
+        assert_eq!(summary.total_gc_duration_ms, 10);
+        assert_eq!(summary.file_io_count, 2);
+        assert_eq!(summary.thread_block_count, 1);
+        assert_eq!(summary.total_block_duration_ms, 5);
+        assert_eq!(summary.mem_alloc_count, 1);
+        assert!((summary.duration_secs - 5.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_display_summary_gc() {
+        let summary = JfrSummary {
+            duration_secs: 10.0,
+            event_counts: std::collections::HashMap::new(),
+            total_events: 100,
+            top_cpu_hotspots: vec![],
+            gc_count: 5,
+            total_gc_duration_ms: 50,
+            file_io_count: 10,
+            total_file_bytes: 0,
+            thread_block_count: 3,
+            total_block_duration_ms: 30,
+            mem_alloc_count: 7,
+            total_alloc_bytes: 0,
+        };
+        display_summary(&summary);
+    }
+
+    #[test]
+    fn test_display_summary_empty() {
+        let summary = JfrSummary {
+            duration_secs: 0.0,
+            event_counts: std::collections::HashMap::new(),
+            total_events: 0,
+            top_cpu_hotspots: vec![],
+            gc_count: 0,
+            total_gc_duration_ms: 0,
+            file_io_count: 0,
+            total_file_bytes: 0,
+            thread_block_count: 0,
+            total_block_duration_ms: 0,
+            mem_alloc_count: 0,
+            total_alloc_bytes: 0,
+        };
+        display_summary(&summary);
+    }
+
+    #[test]
+    fn test_display_summary_with_event_counts() {
+        let mut event_counts = std::collections::HashMap::new();
+        event_counts.insert("CPU 采样".to_string(), 50);
+        event_counts.insert("GC 事件".to_string(), 30);
+        let summary = JfrSummary {
+            duration_secs: 10.0,
+            event_counts,
+            total_events: 80,
+            top_cpu_hotspots: vec![],
+            gc_count: 30,
+            total_gc_duration_ms: 100,
+            file_io_count: 0,
+            total_file_bytes: 0,
+            thread_block_count: 0,
+            total_block_duration_ms: 0,
+            mem_alloc_count: 0,
+            total_alloc_bytes: 0,
+        };
+        display_summary(&summary);
+    }
+
+    #[test]
+    fn test_stderr_string() {
+        let output = std::process::Output {
+            status: std::process::ExitStatus::from_raw(1),
+            stdout: vec![],
+            stderr: b"error message".to_vec(),
+        };
+        assert_eq!(stderr_string(&output), "error message");
+    }
+
+    #[test]
+    fn test_event_type_clone_and_eq() {
+        let e1 = EventType::CpuSampling;
+        let e2 = e1.clone();
+        assert_eq!(e1, e2);
+        let e3 = EventType::Unknown("test".into());
+        let e4 = e3.clone();
+        assert_eq!(e3, e4);
+    }
+
+    #[test]
+    fn test_jfr_event_debug() {
+        let event = JfrEvent {
+            timestamp: 100,
+            event_type: EventType::GcEvent,
+            duration: 50,
+            thread: Some("main".into()),
+            details: "test".into(),
+        };
+        let debug = format!("{:?}", event);
+        assert!(debug.contains("GcEvent"));
+    }
+
 }

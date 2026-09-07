@@ -141,4 +141,45 @@ mod tests {
         assert_eq!(dep.current, "2.10.0");
         assert_eq!(dep.latest, "2.11.0");
     }
+    #[test]
+    fn test_outdated_dep_serde_roundtrip() {
+        let dep = OutdatedDep {
+            group: "org.example".to_string(),
+            artifact: "lib".to_string(),
+            current: "1.0.0".to_string(),
+            latest: "2.0.0".to_string(),
+        };
+        let json = serde_json::to_string(&dep).unwrap();
+        let deserialized: OutdatedDep = serde_json::from_str(&json).unwrap();
+        assert_eq!(dep.group, deserialized.group);
+        assert_eq!(dep.artifact, deserialized.artifact);
+        assert_eq!(dep.current, deserialized.current);
+        assert_eq!(dep.latest, deserialized.latest);
+    }
+
+    #[test]
+    fn test_outdated_dep_debug() {
+        let dep = OutdatedDep {
+            group: "com.test".to_string(),
+            artifact: "mod".to_string(),
+            current: "0.1.0".to_string(),
+            latest: "1.0.0".to_string(),
+        };
+        let debug_str = format!("{:?}", dep);
+        assert!(debug_str.contains("com.test"));
+        assert!(debug_str.contains("mod"));
+    }
+
+    #[test]
+    fn test_outdated_dep_clone() {
+        let dep = OutdatedDep {
+            group: "a".to_string(),
+            artifact: "b".to_string(),
+            current: "1".to_string(),
+            latest: "2".to_string(),
+        };
+        let cloned = dep.clone();
+        assert_eq!(dep.group, cloned.group);
+        assert_eq!(dep.artifact, cloned.artifact);
+    }
 }

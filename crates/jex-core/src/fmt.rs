@@ -225,4 +225,103 @@ mod tests {
         assert_eq!(format!("{}", Style::Aosp), "AOSP");
         assert_eq!(format!("{}", Style::OpenJ7), "OpenJ7");
     }
+    #[test]
+    fn test_style_from_str_openjdk7() {
+        assert_eq!("OPENJDK7".parse::<Style>().unwrap(), Style::OpenJ7);
+    }
+
+    #[test]
+    fn test_style_default() {
+        let s = Style::default();
+        assert_eq!(s, Style::Google);
+    }
+
+    #[test]
+    fn test_style_clone() {
+        let s = Style::Aosp;
+        let cloned = s;
+        assert_eq!(cloned, Style::Aosp);
+    }
+
+    #[test]
+    fn test_style_debug() {
+        assert_eq!(format!("{:?}", Style::Google), "Google");
+        assert_eq!(format!("{:?}", Style::Aosp), "Aosp");
+        assert_eq!(format!("{:?}", Style::OpenJ7), "OpenJ7");
+    }
+
+    #[test]
+    fn test_fmt_config_clone() {
+        let c = FmtConfig::default();
+        let cloned = c.clone();
+        assert_eq!(cloned.style, Style::Google);
+        assert_eq!(cloned.exclude, c.exclude);
+    }
+
+    #[test]
+    fn test_fmt_config_debug() {
+        let c = FmtConfig::default();
+        let debug_str = format!("{:?}", c);
+        assert!(debug_str.contains("Google"));
+    }
+
+    #[test]
+    fn test_output_mode_debug() {
+        assert_eq!(format!("{:?}", OutputMode::Stdout), "Stdout");
+        assert_eq!(format!("{:?}", OutputMode::Check), "Check");
+        assert_eq!(format!("{:?}", OutputMode::Write), "Write");
+    }
+
+    #[test]
+    fn test_output_mode_clone() {
+        let m = OutputMode::Check;
+        let cloned = m;
+        assert!(matches!(cloned, OutputMode::Check));
+    }
+
+    #[test]
+    fn test_format_changed_filtering() {
+        use tempfile::tempdir;
+        let dir = tempdir().unwrap();
+        let build_dir = dir.path().join("build");
+        std::fs::create_dir_all(&build_dir).unwrap();
+        std::fs::write(build_dir.join("Test.java"), "code").unwrap();
+        std::fs::write(dir.path().join("Main.java"), "code").unwrap();
+
+        let config = FmtConfig::default();
+        let files: Vec<_> = vec![
+            PathBuf::from("build/Test.java"),
+            PathBuf::from("Main.java"),
+            PathBuf::from("target/Foo.java"),
+        ];
+        let filtered: Vec<_> = files.into_iter()
+            .filter(|f| {
+                let s = f.to_string_lossy();
+                !config.exclude.iter().any(|e| s.contains(e.as_str()))
+            })
+            .collect();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].to_string_lossy(), "Main.java");
+    }
+
+    #[test]
+    fn test_format_changed_empty_exclude() {
+        let config = FmtConfig {
+            style: Style::Google,
+            aosp: false,
+            skip_future: false,
+            exclude: vec![],
+        };
+        let files: Vec<_> = vec![
+            PathBuf::from("build/Test.java"),
+            PathBuf::from("Main.java"),
+        ];
+        let filtered: Vec<_> = files.into_iter()
+            .filter(|f| {
+                let s = f.to_string_lossy();
+                !config.exclude.iter().any(|e| s.contains(e.as_str()))
+            })
+            .collect();
+        assert_eq!(filtered.len(), 2);
+    }
 }

@@ -21,3 +21,4 @@ jex-core = { path = "crates/jex-core" }
 dirs = "5.0"
 notify = "7"
 tempfile = "3"
+serial_test = "3"

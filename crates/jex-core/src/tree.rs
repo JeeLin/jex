@@ -107,6 +107,7 @@ fn render_node(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_build_dependency_tree() {
@@ -170,5 +171,96 @@ mod tests {
         let output = render_tree(&tree, Some(1));
         assert!(output.contains("child"));
         assert!(!output.contains("grandchild"));
+    }
+
+    #[test]
+    #[serial]
+    fn test_build_dependency_tree_with_deps() {
+        let tmp = tempfile::tempdir().unwrap();
+        let lock_content = r#"lockfile_version = 1
+
+[dependencies]
+"com.google.code.gson:gson" = "2.11.0"
+"org.junit.jupiter:junit-jupiter" = "5.10.0"
+"#;
+        std::fs::write(tmp.path().join("jex.lock.toml"), lock_content).unwrap();
+
+        let orig = std::env::current_dir().unwrap();
+        // SAFETY: we restore immediately after
+        std::env::set_current_dir(tmp.path()).unwrap();
+        let result = build_dependency_tree();
+        let _ = std::env::set_current_dir(&orig);
+
+        let tree = result.unwrap();
+        assert_eq!(tree.root.name, "root");
+        assert_eq!(tree.root.children.len(), 2);
+        assert_eq!(tree.root.children[0].name, "com.google.code.gson:gson");
+        assert_eq!(tree.root.children[0].version, "2.11.0");
+        assert_eq!(tree.root.children[1].name, "org.junit.jupiter:junit-jupiter");
+    }
+
+    #[test]
+    #[serial]
+    fn test_build_dependency_tree_lock_malformed() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Write invalid TOML to trigger parse error
+        std::fs::write(tmp.path().join("jex.lock.toml"), "this is not valid toml {{{").unwrap();
+
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        let result = build_dependency_tree();
+        let _ = std::env::set_current_dir(&orig);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_render_tree_single_child_not_last() {
+        // Test the "├── " connector (is_last = false)
+        let tree = DependencyTree {
+            root: DependencyNode {
+                name: "root".to_string(),
+                version: "".to_string(),
+                license: None,
+                children: vec![
+                    DependencyNode {
+                        name: "first".to_string(),
+                        version: "1.0".to_string(),
+                        license: None,
+                        children: Vec::new(),
+                    },
+                    DependencyNode {
+                        name: "second".to_string(),
+                        version: "2.0".to_string(),
+                        license: None,
+                        children: Vec::new(),
+                    },
+                ],
+            },
+        };
+        let output = render_tree(&tree, None);
+        assert!(output.contains("├── first"));
+        assert!(output.contains("└── second"));
+    }
+
+    #[test]
+    fn test_render_tree_depth_zero() {
+        // depth=0 means only root, no children rendered
+        let tree = DependencyTree {
+            root: DependencyNode {
+                name: "root".to_string(),
+                version: "".to_string(),
+                license: None,
+                children: vec![DependencyNode {
+                    name: "child".to_string(),
+                    version: "1.0".to_string(),
+                    license: None,
+                    children: Vec::new(),
+                }],
+            },
+        };
+        let output = render_tree(&tree, Some(0));
+        assert!(output.contains("root"));
+        assert!(!output.contains("child"));
     }
 }

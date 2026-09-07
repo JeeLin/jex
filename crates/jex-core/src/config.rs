@@ -52,6 +52,7 @@ pub fn read_fmt_config() -> Result<crate::fmt::FmtConfig> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_jex_home() {
@@ -83,5 +84,112 @@ mod tests {
         // 在没有 jex.toml 的目录调用应返回 Err
         let result = read_fmt_config();
         assert!(result.is_err());
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_fmt_config_full() {
+        let tmp = tempfile::tempdir().unwrap();
+        let toml_content = r#"
+[fmt]
+style = "AOSP"
+aosp = true
+skip_future = true
+exclude = ["build/", "out/", "generated/"]
+"#;
+        std::fs::write(tmp.path().join("jex.toml"), toml_content).unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        let config = read_fmt_config().unwrap();
+        std::env::set_current_dir(&orig).unwrap();
+        assert_eq!(config.style, crate::fmt::Style::Aosp);
+        assert!(config.aosp);
+        assert!(config.skip_future);
+        assert_eq!(config.exclude, vec!["build/", "out/", "generated/"]);
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_fmt_config_minimal() {
+        let tmp = tempfile::tempdir().unwrap();
+        let toml_content = r#"
+[fmt]
+style = "Google"
+"#;
+        std::fs::write(tmp.path().join("jex.toml"), toml_content).unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        let config = read_fmt_config().unwrap();
+        std::env::set_current_dir(&orig).unwrap();
+        assert_eq!(config.style, crate::fmt::Style::Google);
+        assert!(!config.aosp);
+        assert!(!config.skip_future);
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_fmt_config_no_fmt_section() {
+        let tmp = tempfile::tempdir().unwrap();
+        let toml_content = r#"
+[project]
+name = "my-app"
+"#;
+        std::fs::write(tmp.path().join("jex.toml"), toml_content).unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        let config = read_fmt_config().unwrap();
+        std::env::set_current_dir(&orig).unwrap();
+        // Should use defaults
+        assert_eq!(config.style, crate::fmt::Style::Google);
+        assert!(!config.aosp);
+        assert!(!config.skip_future);
+        assert!(config.exclude.contains(&"build/".to_string()));
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_fmt_config_invalid_toml() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("jex.toml"), "{{{{invalid").unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        let result = read_fmt_config();
+        std::env::set_current_dir(&orig).unwrap();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("解析 jex.toml 失败"));
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_fmt_config_invalid_style() {
+        let tmp = tempfile::tempdir().unwrap();
+        let toml_content = r#"
+[fmt]
+style = "InvalidStyle"
+"#;
+        std::fs::write(tmp.path().join("jex.toml"), toml_content).unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        let config = read_fmt_config().unwrap();
+        std::env::set_current_dir(&orig).unwrap();
+        // Invalid style should keep default (Google)
+        assert_eq!(config.style, crate::fmt::Style::Google);
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_fmt_config_exclude_with_non_strings() {
+        let tmp = tempfile::tempdir().unwrap();
+        let toml_content = r#"
+[fmt]
+exclude = ["build/", 123, true, "out/"]
+"#;
+        std::fs::write(tmp.path().join("jex.toml"), toml_content).unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        let config = read_fmt_config().unwrap();
+        std::env::set_current_dir(&orig).unwrap();
+        // Non-string items should be filtered out
+        assert_eq!(config.exclude, vec!["build/", "out/"]);
     }
 }

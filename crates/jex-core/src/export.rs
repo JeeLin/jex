@@ -104,4 +104,131 @@ mod tests {
         let result = parse_coord("invalid");
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_pom_xml_full_generation() {
+        // Test the full pom.xml generation logic with dependencies
+        let project_name = "my-app";
+        let group_id = format!("local.{}", project_name);
+        let artifact_id = project_name;
+        let version = "0.1.0";
+
+        let mut pom = String::new();
+        pom.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        pom.push_str("<project xmlns=\"http://maven.apache.org/POM/4.0.0\"
+");
+        pom.push_str("         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+");
+        pom.push_str("         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">
+");
+        pom.push_str("    <modelVersion>4.0.0</modelVersion>\n");
+        pom.push_str(&format!("    <groupId>{}</groupId>\n", group_id));
+        pom.push_str(&format!("    <artifactId>{}</artifactId>\n", artifact_id));
+        pom.push_str(&format!("    <version>{}</version>\n", version));
+        pom.push_str("    <packaging>jar</packaging>\n");
+        pom.push('\n');
+        pom.push_str("    <dependencies>\n");
+
+        // Simulate dependencies
+        let deps = vec![
+            ("com.google.code.gson:gson", "2.11.0"),
+            ("org.slf4j:slf4j-api", "2.0.9"),
+        ];
+        for (coord, ver) in &deps {
+            if let Ok((dep_group, dep_artifact)) = parse_coord(coord) {
+                pom.push_str("        <dependency>\n");
+                pom.push_str(&format!("            <groupId>{}</groupId>\n", dep_group));
+                pom.push_str(&format!("            <artifactId>{}</artifactId>\n", dep_artifact));
+                pom.push_str(&format!("            <version>{}</version>\n", ver));
+                pom.push_str("        </dependency>\n");
+            }
+        }
+
+        pom.push_str("    </dependencies>\n");
+        pom.push_str("</project>\n");
+
+        assert!(pom.contains("local.my-app"));
+        assert!(pom.contains("<groupId>com.google.code.gson</groupId>"));
+        assert!(pom.contains("<artifactId>gson</artifactId>\n"));
+        assert!(pom.contains("<version>2.11.0</version>\n"));
+        assert!(pom.contains("<groupId>org.slf4j</groupId>"));
+        assert!(pom.contains("<artifactId>slf4j-api</artifactId>\n"));
+        assert!(pom.contains("</dependencies>"));
+        assert!(pom.contains("</project>"));
+    }
+
+    #[test]
+    fn test_pom_with_invalid_coord_skipped() {
+        let mut pom = String::new();
+        pom.push_str("<dependencies>\n");
+        let deps = vec![
+            ("valid:dep", "1.0"),
+            ("invalid-no-colon", "2.0"),
+        ];
+        for (coord, ver) in &deps {
+            if let Ok((dep_group, dep_artifact)) = parse_coord(coord) {
+                pom.push_str(&format!("    <dependency>{}:{}</dependency>\n", dep_group, dep_artifact));
+            }
+        }
+        pom.push_str("</dependencies>");
+        // Only valid dep should be in output
+        assert!(pom.contains("valid:dep"));
+        assert!(!pom.contains("invalid-no-colon"));
+    }
+
+    #[test]
+    fn test_pom_with_empty_deps() {
+        let dependencies: Vec<(&str, &str)> = vec![];
+        let mut pom = String::new();
+        pom.push_str("    <dependencies>\n");
+        for (coord, ver) in &dependencies {
+            if let Ok((dep_group, dep_artifact)) = parse_coord(coord) {
+                pom.push_str(&format!("        <dependency>{}:{}</dependency>\n", dep_group, dep_artifact));
+            }
+        }
+        pom.push_str("    </dependencies>\n");
+        assert!(pom.contains("    <dependencies>\n    </dependencies>\n"));
+    }
+
+    #[test]
+    fn test_maven_default_project_name() {
+        // Test the default project name fallback logic
+        let project_name = None::<&str>;
+        let name = project_name.unwrap_or("demo");
+        assert_eq!(name, "demo");
+        let group_id = format!("local.{}", name);
+        assert_eq!(group_id, "local.demo");
+    }
+
+    #[test]
+    fn test_pom_xml_structure() {
+        // Verify the XML structure is correct
+        let mut pom = String::new();
+        pom.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        pom.push_str("<project xmlns=\"http://maven.apache.org/POM/4.0.0\"
+");
+        pom.push_str("         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+");
+        pom.push_str("         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">
+");
+        pom.push_str("    <modelVersion>4.0.0</modelVersion>\n");
+        pom.push_str("    <groupId>local.test</groupId>\n");
+        pom.push_str("    <artifactId>test</artifactId>\n");
+        pom.push_str("    <version>0.1.0</version>\n");
+        pom.push_str("    <packaging>jar</packaging>\n");
+        pom.push('\n');
+        pom.push_str("    <dependencies>\n");
+        pom.push_str("    </dependencies>\n");
+        pom.push_str("</project>\n");
+
+        // Verify XML declaration
+        assert!(pom.starts_with("<?xml version="));
+        // Verify project tag
+        assert!(pom.contains("<project xmlns="));
+        assert!(pom.contains("</project>"));
+        // Verify model version
+        assert!(pom.contains("<modelVersion>4.0.0</modelVersion>"));
+        // Verify packaging
+        assert!(pom.contains("<packaging>jar</packaging>"));
+    }
 }

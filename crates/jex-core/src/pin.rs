@@ -146,11 +146,84 @@ mod tests {
 
     #[test]
     fn test_pin_unpin_cycle() {
-        let mut pinned = HashMap::new();
+        let mut pinned: HashMap<String, String> = HashMap::new();
         pinned.insert("test:dep".to_string(), "1.0.0".to_string());
         assert!(pinned.contains_key("test:dep"));
 
         pinned.remove("test:dep");
         assert!(!pinned.contains_key("test:dep"));
+    }
+    #[test]
+    fn test_pinned_dep_serde() {
+        let dep = PinnedDep {
+            coord: "com.test:lib".to_string(),
+            version: "1.0.0".to_string(),
+            pinned_at: "2026-09-07".to_string(),
+        };
+        let json = serde_json::to_string(&dep).unwrap();
+        let deser: PinnedDep = serde_json::from_str(&json).unwrap();
+        assert_eq!(deser.coord, "com.test:lib");
+        assert_eq!(deser.version, "1.0.0");
+    }
+
+    #[test]
+    fn test_pinned_dep_debug() {
+        let dep = PinnedDep {
+            coord: "a:b".to_string(),
+            version: "1".to_string(),
+            pinned_at: "t".to_string(),
+        };
+        let debug_str = format!("{:?}", dep);
+        assert!(debug_str.contains("a:b"));
+    }
+
+    #[test]
+    fn test_pinned_dep_clone() {
+        let dep = PinnedDep {
+            coord: "x:y".to_string(),
+            version: "2".to_string(),
+            pinned_at: "z".to_string(),
+        };
+        let cloned = dep.clone();
+        assert_eq!(dep.coord, cloned.coord);
+    }
+
+    #[test]
+    fn test_hashmap_serialization_roundtrip() {
+        let mut pinned: HashMap<String, String> = HashMap::new();
+        pinned.insert("com.google:gson".to_string(), "2.11.0".to_string());
+        pinned.insert("org.apache:commons".to_string(), "3.12.0".to_string());
+        let content = toml::to_string_pretty(&pinned).unwrap();
+        assert!(content.contains("gson"));
+        assert!(content.contains("2.11.0"));
+        let deser: HashMap<String, String> = toml::from_str(&content).unwrap();
+        assert_eq!(deser.len(), 2);
+        assert_eq!(deser["com.google:gson"], "2.11.0");
+    }
+
+    #[test]
+    fn test_hashmap_empty_serialization() {
+        let pinned: HashMap<String, String> = HashMap::new();
+        let content = toml::to_string_pretty(&pinned).unwrap();
+        let deser: HashMap<String, String> = toml::from_str(&content).unwrap();
+        assert!(deser.is_empty());
+    }
+
+    #[test]
+    fn test_unpin_nonexistent() {
+        // unpin_dependency should handle non-existent keys gracefully
+        // It reads the pin file, tries to remove, and prints a warning
+        // Since this touches the real pin file, we can't fully test it
+        // But we can test the HashMap logic
+        let mut pinned: HashMap<String, String> = HashMap::new();
+        assert!(pinned.remove("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_pin_path_returns_consistent_result() {
+        // pin_path should return a valid path containing .jex
+        let path = pin_path().unwrap();
+        assert!(path.to_string_lossy().contains(".jex"));
+        assert!(path.to_string_lossy().ends_with("jex.pin.toml"));
     }
 }

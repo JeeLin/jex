@@ -14,6 +14,7 @@
 | 依赖解析 | Coursier (cs) | MVP 用 shell cs，稳定后内嵌 |
 | JDK 下载 | Adoptium API | api.adoptium.net |
 | 诊断 | jstat/jcmd + async-profiler | 不重造，只做美化 |
+| TUI 框架 | ratatui | 所有交互式终端界面功能统一使用 ratatui |
 
 ## 目录结构
 

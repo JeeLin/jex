@@ -98,4 +98,7 @@ jex run src/Main.java       # 非脚本文件，走原有编译流程
 | [已完成] 依赖依赖树增强 | `jex tree --verbose` | 显示依赖树详细信息（版本、许可证、漏洞） |
 | [已规划] 热重载 | `jex watch` | 文件变更自动重新编译运行（开发体验） |
 | [已完成] Monorepo 支持 | `jex workspace` | 多模块项目统一管理（依赖共享、批量操作） |
+| [待规划] 交互式依赖树浏览 | `jex tree -i` | 基于 ratatui 的 TUI 交互式依赖树浏览（展开/折叠/搜索/过滤） |
+| [待规划] 交互式报告仪表盘 | `jex dashboard` | 基于 ratatui 的 TUI 仪表盘（依赖健康度、漏洞概览、许可证分布） |
+| [待规划] 交互式项目初始化 | `jex init -i` | 基于 ratatui 的 TUI 向导式项目创建（模板选择、配置预览） |
 | [待规划] IDE 集成 | `jex ide` | 与主流 IDE（VS Code/IntelliJ）集成（项目检测、依赖提示） |

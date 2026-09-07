@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use jex_core::error::Result;
-use jex_core::{audit, audit_fix, cache, changelog, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
+use jex_core::{tree_verbose, audit, audit_fix, cache, changelog, compat_check, deps, diag, export, fmt, import, jdk, jfr, license, license_check, outdated, pin, profiler, report, run, search, template, tree};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -379,6 +379,12 @@ struct TreeArgs {
     /// 输出 JSON 格式
     #[arg(long)]
     json: bool,
+    /// 显示详细信息（版本、许可证、漏洞状态）
+    #[arg(short, long)]
+    verbose: bool,
+    /// 按名称/许可证/漏洞过滤依赖
+    #[arg(short, long)]
+    filter: Option<String>,
 }
 
 #[derive(Args)]
@@ -495,13 +501,29 @@ fn run(cli: Cli) -> Result<()> {
             Ok(())
         }
         Commands::Tree(a) => {
-            let tree = tree::build_dependency_tree()?;
+            if a.verbose {
+                let mut report = tree_verbose::tree_verbose()?;
 
-            if a.json {
-                println!("{}", serde_json::to_string_pretty(&tree)?);
+                // 应用过滤
+                if let Some(ref filter) = a.filter {
+                    report = tree_verbose::filter_report(&report, filter);
+                }
+
+                if a.json {
+                    println!("{}", serde_json::to_string_pretty(&report)?);
+                } else {
+                    let output = tree_verbose::render_verbose(&report);
+                    println!("{}", output);
+                }
             } else {
-                let output = tree::render_tree(&tree, a.depth);
-                println!("{}", output);
+                let tree = tree::build_dependency_tree()?;
+
+                if a.json {
+                    println!("{}", serde_json::to_string_pretty(&tree)?);
+                } else {
+                    let output = tree::render_tree(&tree, a.depth);
+                    println!("{}", output);
+                }
             }
             Ok(())
         },

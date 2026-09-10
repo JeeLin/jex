@@ -56,16 +56,92 @@ pub fn read_language_config() -> crate::i18n::Lang {
         let f = home.join("config.toml");
         if let Ok(s) = std::fs::read_to_string(&f) {
             if let Ok(v) = s.parse::<toml::Value>() {
-                if let Some(ls) = v.get("i18n").and_then(|s| s.get("lang")).and_then(|v| v.as_str()) {
-                    if let Some(lang) = crate::i18n::Lang::from_str(ls) { return lang; }
+                if let Some(ls) = v
+                    .get("i18n")
+                    .and_then(|s| s.get("lang"))
+                    .and_then(|v| v.as_str())
+                {
+                    if let Some(lang) = crate::i18n::Lang::from_str(ls) {
+                        return lang;
+                    }
                 }
             }
         }
     }
     if let Ok(e) = std::env::var("JEX_LANG") {
-        if let Some(lang) = crate::i18n::Lang::from_str(&e) { return lang; }
+        if let Some(lang) = crate::i18n::Lang::from_str(&e) {
+            return lang;
+        }
     }
     crate::i18n::Lang::En
+}
+
+/// Read a config value by dotted key (e.g. "i18n.lang")
+pub fn config_get(key: &str) -> Result<String> {
+    let home = jex_home()?;
+    let path = home.join("config.toml");
+    let content = std::fs::read_to_string(&path)
+        .map_err(|_| Error::new(format!("No config at {}", path.display())))?;
+    let value: toml::Value = content
+        .parse()
+        .map_err(|e| Error::new(format!("Invalid TOML: {e}")))?;
+    let parts: Vec<&str> = key.split('.').collect();
+    let mut cur = &value;
+    for part in &parts {
+        cur = cur
+            .get(*part)
+            .ok_or_else(|| Error::new(format!("Key not found: {key}")))?;
+    }
+    Ok(cur.to_string())
+}
+
+/// Set a config value by dotted key (e.g. "i18n.lang" = "en")
+pub fn config_set(key: &str, value: &str) -> Result<String> {
+    let home = jex_home()?;
+    std::fs::create_dir_all(&home).ok();
+    let path = home.join("config.toml");
+    let mut config: toml::Value = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| s.parse::<toml::Value>().ok())
+        .unwrap_or_else(|| toml::Value::Table(toml::map::Map::new()));
+    let parts: Vec<&str> = key.split('.').collect();
+    if parts.len() != 2 {
+        return Err(Error::new(
+            "Key must be section.field (e.g. i18n.lang)".to_string(),
+        ));
+    }
+    let table = config.as_table_mut().unwrap();
+    let sub = table
+        .entry(parts[0])
+        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()))
+        .as_table_mut()
+        .unwrap();
+    if let Ok(b) = value.parse::<bool>() {
+        sub.insert(parts[1].into(), toml::Value::Boolean(b));
+    } else if let Ok(i) = value.parse::<i64>() {
+        sub.insert(parts[1].into(), toml::Value::Integer(i));
+    } else {
+        sub.insert(parts[1].into(), toml::Value::String(value.to_string()));
+    }
+    let toml_str = toml::to_string_pretty(&config)?;
+    std::fs::write(&path, &toml_str)?;
+    Ok(format!("Set {key} = {value} in {}", path.display()))
+}
+
+/// List all config values
+pub fn config_list() -> Result<String> {
+    let home = jex_home()?;
+    let path = home.join("config.toml");
+    if path.exists() {
+        let content =
+            std::fs::read_to_string(&path).map_err(|e| Error::new(format!("Read error: {e}")))?;
+        Ok(content)
+    } else {
+        Ok(format!(
+            "No config at {}\nCreate one: jex config set i18n.lang en",
+            path.display()
+        ))
+    }
 }
 
 #[cfg(test)]

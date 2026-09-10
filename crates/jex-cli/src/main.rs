@@ -144,6 +144,9 @@ enum Commands {
     #[command(subcommand)]
     Workspace(WorkspaceCommand),
 
+    /// Manage configuration
+    #[command(alias = "cfg")]
+    Config(ConfigArgs),
     /// 热重载：监听文件变更自动编译运行
     #[command(alias = "w")]
     Watch(WatchArgs),
@@ -412,6 +415,33 @@ enum WorkspaceCommand {
 }
 
 #[derive(Args)]
+struct ConfigArgs {
+    #[command(subcommand)]
+    command: ConfigCommand,
+}
+
+#[derive(Subcommand)]
+enum ConfigCommand {
+    /// Get a config value
+    #[command(alias = "g")]
+    Get {
+        /// Config key (e.g. i18n.lang)
+        key: String,
+    },
+    /// Set a config value
+    #[command(alias = "s")]
+    Set {
+        /// Config key (e.g. i18n.lang)
+        key: String,
+        /// Value to set
+        value: String,
+    },
+    /// List all config values
+    #[command(alias = "l")]
+    List,
+}
+
+#[derive(Args)]
 struct WatchArgs {
     /// 监听目录（默认 src）
     #[arg(short, long, default_value = "src")]
@@ -470,6 +500,8 @@ enum CacheCommand {
     Path,
 }
 fn main() {
+    jex_core::i18n::init_messages();
+    jex_core::i18n::set_lang(jex_core::config::read_language_config());
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
         eprintln!("错误: {e}");
@@ -490,6 +522,20 @@ fn fmt_output_mode(args: &FmtArgs) -> fmt::OutputMode {
 
 fn run(cli: Cli) -> Result<()> {
     match cli.command {
+        Commands::Config(args) => {
+            let result = match args.command {
+                ConfigCommand::Get { key } => jex_core::config::config_get(&key),
+                ConfigCommand::Set { key, value } => jex_core::config::config_set(&key, &value),
+                ConfigCommand::List => jex_core::config::config_list(),
+            };
+            match result {
+                Ok(msg) => {
+                    println!("{msg}");
+                    Ok(())
+                }
+                Err(e) => Err(e),
+            }
+        }
         Commands::Jdk(c) => match c {
             JdkCommand::Install(a) => jdk::install(&a.version),
             JdkCommand::Use(a) => jdk::use_version(&a.version),

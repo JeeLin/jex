@@ -7,8 +7,8 @@ use std::path::PathBuf;
 
 /// 返回 ~/.jex 全局目录路径。
 pub fn jex_home() -> Result<PathBuf> {
-    let home = std::env::var("HOME").map_err(|_| Error::new("找不到 HOME 环境变量"))?;
-    Ok(PathBuf::from(home).join(".jex"))
+    let home = dirs::home_dir().ok_or_else(|| Error::new("无法获取用户主目录".to_string()))?;
+    Ok(home.join(".jex"))
 }
 
 /// 返回 ~/.jex/m2/ 缓存目录（替代 cs fetch 的本地 jar 仓库）。

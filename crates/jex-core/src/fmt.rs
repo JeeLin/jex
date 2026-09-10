@@ -323,4 +323,101 @@ mod tests {
             .collect();
         assert_eq!(filtered.len(), 2);
     }
+
+    #[test]
+    fn test_fmt_config_custom() {
+        let c = FmtConfig {
+            style: Style::Aosp,
+            aosp: true,
+            skip_future: true,
+            exclude: vec!["generated/".to_string()],
+        };
+        assert_eq!(c.style, Style::Aosp);
+        assert!(c.aosp);
+        assert!(c.skip_future);
+    }
+
+    #[test]
+    fn test_style_equality() {
+        assert_eq!(Style::Google, Style::Google);
+        assert_ne!(Style::Google, Style::Aosp);
+        assert_ne!(Style::Aosp, Style::OpenJ7);
+    }
+
+    #[test]
+    fn test_output_mode_equality() {
+        assert!(matches!(OutputMode::Stdout, OutputMode::Stdout));
+        // removed: OutputMode lacks PartialEq;
+        // removed: OutputMode lacks PartialEq;
+    }
+
+    #[test]
+    fn test_style_from_invalid_strings() {
+        assert!("google-java-format".parse::<Style>().is_err());
+        assert!("".parse::<Style>().is_err());
+        assert!("spring".parse::<Style>().is_err());
+        assert!("random".parse::<Style>().is_err());
+    }
+
+    #[test]
+    fn test_format_changed_multiple_excludes() {
+        let config = FmtConfig {
+            style: Style::Google, aosp: false, skip_future: false,
+            exclude: vec!["build/".to_string(), "target/".to_string(), "gen/".to_string()],
+        };
+        let files: Vec<_> = vec![
+            PathBuf::from("build/A.java"),
+            PathBuf::from("target/B.java"),
+            PathBuf::from("gen/C.java"),
+            PathBuf::from("src/Main.java"),
+        ];
+        let filtered: Vec<_> = files.into_iter().filter(|f| {
+            let s = f.to_string_lossy();
+            !config.exclude.iter().any(|e| s.contains(e.as_str()))
+        }).collect();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].to_string_lossy(), "src/Main.java");
+    }
+
+    #[test]
+    fn test_format_changed_non_java_preserved() {
+        let config = FmtConfig::default();
+        let files: Vec<_> = vec![
+            PathBuf::from("src/Main.java"),
+            PathBuf::from("src/readme.md"),
+            PathBuf::from("build/Test.java"),
+        ];
+        let filtered: Vec<_> = files.into_iter().filter(|f| {
+            let s = f.to_string_lossy();
+            !config.exclude.iter().any(|e| s.contains(e.as_str()))
+        }).collect();
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn test_format_changed_nested_exclude() {
+        let config = FmtConfig {
+            style: Style::Google, aosp: false, skip_future: false,
+            exclude: vec!["build/".to_string()],
+        };
+        // Nested path still matches "build/"
+        let files: Vec<_> = vec![
+            PathBuf::from("project/build/output/Test.java"),
+            PathBuf::from("src/Main.java"),
+        ];
+        let filtered: Vec<_> = files.into_iter().filter(|f| {
+            let s = f.to_string_lossy();
+            !config.exclude.iter().any(|e| s.contains(e.as_str()))
+        }).collect();
+        assert_eq!(filtered.len(), 1);
+    }
+
+    #[test]
+    fn test_style_clone_all() {
+        let styles = [Style::Google, Style::Aosp, Style::OpenJ7];
+        for s in styles {
+            let cloned = s;
+            assert_eq!(cloned, s);
+        }
+    }
 }

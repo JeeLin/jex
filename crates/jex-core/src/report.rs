@@ -139,7 +139,6 @@ mod tests {
             vulnerability_count: 1,
             license_issues: 0,
         };
-
         assert_eq!(summary.total_dependencies, 10);
         assert_eq!(summary.outdated_count, 2);
         assert_eq!(summary.vulnerability_count, 1);
@@ -147,11 +146,38 @@ mod tests {
     }
 
     #[test]
-    fn test_render_report() {
+    fn test_report_summary_zero() {
+        let summary = ReportSummary {
+            total_dependencies: 0,
+            outdated_count: 0,
+            vulnerability_count: 0,
+            license_issues: 0,
+        };
+        assert_eq!(summary.total_dependencies, 0);
+        assert_eq!(summary.outdated_count, 0);
+    }
+
+    #[test]
+    fn test_report_summary_serialize() {
+        let summary = ReportSummary {
+            total_dependencies: 5,
+            outdated_count: 2,
+            vulnerability_count: 1,
+            license_issues: 3,
+        };
+        let json = serde_json::to_string(&summary).unwrap();
+        assert!(json.contains("total_dependencies"));
+        let deserialized: ReportSummary = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.total_dependencies, 5);
+        assert_eq!(deserialized.license_issues, 3);
+    }
+
+    #[test]
+    fn test_dependency_report_serialize() {
         let report = DependencyReport {
             summary: ReportSummary {
-                total_dependencies: 5,
-                outdated_count: 1,
+                total_dependencies: 1,
+                outdated_count: 0,
                 vulnerability_count: 0,
                 license_issues: 0,
             },
@@ -167,10 +193,178 @@ mod tests {
                 },
             },
         };
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(json.contains("summary"));
+        let deserialized: DependencyReport = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.summary.total_dependencies, 1);
+    }
 
+    #[test]
+    fn test_render_report_empty() {
+        let report = DependencyReport {
+            summary: ReportSummary {
+                total_dependencies: 0,
+                outdated_count: 0,
+                vulnerability_count: 0,
+                license_issues: 0,
+            },
+            outdated: Vec::new(),
+            vulnerabilities: Vec::new(),
+            licenses: Vec::new(),
+            tree: tree::DependencyTree {
+                root: tree::DependencyNode {
+                    name: "root".to_string(),
+                    version: "".to_string(),
+                    license: None,
+                    children: Vec::new(),
+                },
+            },
+        };
         let output = render_report(&report);
         assert!(output.contains("项目依赖分析报告"));
-        assert!(output.contains("总依赖数: 5"));
+        assert!(output.contains("总依赖数: 0"));
+        assert!(output.contains("可更新: 0"));
+        assert!(output.contains("安全漏洞: 0"));
+        assert!(output.contains("许可证问题: 0"));
+    }
+
+    #[test]
+    fn test_render_report_with_outdated() {
+        let report = DependencyReport {
+            summary: ReportSummary {
+                total_dependencies: 2,
+                outdated_count: 1,
+                vulnerability_count: 0,
+                license_issues: 0,
+            },
+            outdated: vec![outdated::OutdatedDep {
+                group: "com.google.code.gson".to_string(),
+                artifact: "gson".to_string(),
+                current: "2.10.0".to_string(),
+                latest: "2.11.0".to_string(),
+            }],
+            vulnerabilities: Vec::new(),
+            licenses: Vec::new(),
+            tree: tree::DependencyTree {
+                root: tree::DependencyNode {
+                    name: "root".to_string(),
+                    version: "".to_string(),
+                    license: None,
+                    children: Vec::new(),
+                },
+            },
+        };
+        let output = render_report(&report);
+        assert!(output.contains("可更新依赖"));
+        assert!(output.contains("gson"));
+        assert!(output.contains("2.10.0"));
+        assert!(output.contains("2.11.0"));
+    }
+
+    #[test]
+    fn test_render_report_with_vulns() {
+        let report = DependencyReport {
+            summary: ReportSummary {
+                total_dependencies: 1,
+                outdated_count: 0,
+                vulnerability_count: 1,
+                license_issues: 0,
+            },
+            outdated: Vec::new(),
+            vulnerabilities: vec![audit::Vulnerability {
+                group: "org.apache.logging.log4j".to_string(),
+                artifact: "log4j-core".to_string(),
+                current_version: "2.14.0".to_string(),
+                cve_id: "CVE-2021-44228".to_string(),
+                severity: audit::Severity::Critical,
+                description: "Log4Shell".to_string(),
+                fixed_version: None,
+            }],
+            licenses: Vec::new(),
+            tree: tree::DependencyTree {
+                root: tree::DependencyNode {
+                    name: "root".to_string(),
+                    version: "".to_string(),
+                    license: None,
+                    children: Vec::new(),
+                },
+            },
+        };
+        let output = render_report(&report);
+        assert!(output.contains("安全漏洞"));
+        assert!(output.contains("log4j-core"));
+        assert!(output.contains("CVE-2021-44228"));
+    }
+
+    #[test]
+    fn test_render_report_with_licenses() {
+        let report = DependencyReport {
+            summary: ReportSummary {
+                total_dependencies: 1,
+                outdated_count: 0,
+                vulnerability_count: 0,
+                license_issues: 0,
+            },
+            outdated: Vec::new(),
+            vulnerabilities: Vec::new(),
+            licenses: vec![license::LicenseInfo {
+                group: "com.google.code.gson".to_string(),
+                artifact: "gson".to_string(),
+                version: "2.11.0".to_string(),
+                license: "Apache-2.0".to_string(),
+                spdx_id: "Apache-2.0".to_string(),
+                category: license::LicenseCategory::Permissive,
+            }],
+            tree: tree::DependencyTree {
+                root: tree::DependencyNode {
+                    name: "root".to_string(),
+                    version: "".to_string(),
+                    license: None,
+                    children: Vec::new(),
+                },
+            },
+        };
+        let output = render_report(&report);
+        assert!(output.contains("许可证分布"));
+        assert!(output.contains("Apache-2.0"));
+    }
+
+    #[test]
+    fn test_render_report_with_all_sections() {
+        let report = DependencyReport {
+            summary: ReportSummary {
+                total_dependencies: 3,
+                outdated_count: 1,
+                vulnerability_count: 1,
+                license_issues: 1,
+            },
+            outdated: vec![outdated::OutdatedDep {
+                group: "a".to_string(), artifact: "b".to_string(),
+                current: "1.0".to_string(), latest: "2.0".to_string(),
+            }],
+            vulnerabilities: vec![audit::Vulnerability {
+                group: "c".to_string(), artifact: "d".to_string(),
+                current_version: "1.0".to_string(), cve_id: "CVE-1".to_string(),
+                severity: audit::Severity::High, description: "test".to_string(),
+                fixed_version: None,
+            }],
+            licenses: vec![license::LicenseInfo {
+                group: "e".to_string(), artifact: "f".to_string(),
+                version: "1.0".to_string(), license: "MIT".to_string(),
+                spdx_id: "MIT".to_string(), category: license::LicenseCategory::Permissive,
+            }],
+            tree: tree::DependencyTree {
+                root: tree::DependencyNode {
+                    name: "root".to_string(), version: "".to_string(),
+                    license: None, children: Vec::new(),
+                },
+            },
+        };
+        let output = render_report(&report);
+        assert!(output.contains("总依赖数: 3"));
         assert!(output.contains("可更新: 1"));
+        assert!(output.contains("安全漏洞: 1"));
+        assert!(output.contains("许可证问题: 1"));
     }
 }
+

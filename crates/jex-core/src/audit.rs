@@ -244,6 +244,8 @@ mod tests {
         assert!(Severity::Critical > Severity::High);
         assert!(Severity::High > Severity::Medium);
         assert!(Severity::Medium > Severity::Low);
+        assert!(Severity::Low < Severity::Critical);
+        assert!(Severity::Medium == Severity::Medium);
     }
 
     #[test]
@@ -255,7 +257,31 @@ mod tests {
     }
 
     #[test]
-    fn test_get_fix_suggestion() {
+    fn test_severity_fmt_trait() {
+        assert_eq!(format!("{}", Severity::Critical), "CRITICAL");
+        assert_eq!(format!("{}", Severity::High), "HIGH");
+        assert_eq!(format!("{}", Severity::Medium), "MEDIUM");
+        assert_eq!(format!("{}", Severity::Low), "LOW");
+    }
+
+    #[test]
+    fn test_severity_color() {
+        assert_eq!(Severity::Critical.color(), "\x1b[31m");
+        assert_eq!(Severity::High.color(), "\x1b[31m");
+        assert_eq!(Severity::Medium.color(), "\x1b[33m");
+        assert_eq!(Severity::Low.color(), "\x1b[32m");
+    }
+
+    #[test]
+    fn test_severity_priority() {
+        // Critical > High > Medium > Low
+        assert!(Severity::Critical > Severity::High);
+        assert!(Severity::High > Severity::Medium);
+        assert!(Severity::Medium > Severity::Low);
+    }
+
+    #[test]
+    fn test_vulnerability_serialize() {
         let vuln = Vulnerability {
             group: "com.google.code.gson".to_string(),
             artifact: "gson".to_string(),
@@ -265,10 +291,60 @@ mod tests {
             description: "Deserialization of Untrusted Data".to_string(),
             fixed_version: Some("2.11.0".to_string()),
         };
+        let json = serde_json::to_string(&vuln).unwrap();
+        assert!(json.contains("CVE-2022-25647"));
+        assert!(json.contains("gson"));
 
+        let deserialized: Vulnerability = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.cve_id, "CVE-2022-25647");
+        assert_eq!(deserialized.severity, Severity::High);
+    }
+
+    #[test]
+    fn test_vulnerability_no_fixed_version() {
+        let vuln = Vulnerability {
+            group: "org.apache.logging.log4j".to_string(),
+            artifact: "log4j-core".to_string(),
+            current_version: "2.14.0".to_string(),
+            cve_id: "CVE-2021-44228".to_string(),
+            severity: Severity::Critical,
+            description: "Log4Shell".to_string(),
+            fixed_version: None,
+        };
+        let json = serde_json::to_string(&vuln).unwrap();
+        let deserialized: Vulnerability = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.fixed_version.is_none());
+    }
+
+    #[test]
+    fn test_get_fix_suggestion() {
+        let vuln = Vulnerability {
+            group: "com.google.code.gson".to_string(),
+            artifact: "gson".to_string(),
+            current_version: "2.10.0".to_string(),
+            cve_id: "CVE-2022-25647".to_string(),
+            severity: Severity::High,
+            description: "test".to_string(),
+            fixed_version: Some("2.11.0".to_string()),
+        };
         let suggestion = get_fix_suggestion(&vuln);
         assert!(suggestion.is_some());
         assert!(suggestion.unwrap().contains("2.11.0"));
+    }
+
+    #[test]
+    fn test_get_fix_suggestion_none() {
+        let vuln = Vulnerability {
+            group: "test".to_string(),
+            artifact: "test".to_string(),
+            current_version: "1.0".to_string(),
+            cve_id: "CVE-001".to_string(),
+            severity: Severity::Low,
+            description: "test".to_string(),
+            fixed_version: None,
+        };
+        let suggestion = get_fix_suggestion(&vuln);
+        assert!(suggestion.is_none());
     }
 
     #[test]
@@ -298,5 +374,150 @@ mod tests {
         assert_eq!(report.total_vulnerabilities, 2);
         assert_eq!(report.high, 1);
         assert_eq!(report.low, 1);
+        assert_eq!(report.critical, 0);
+        assert_eq!(report.medium, 0);
+    }
+
+    #[test]
+    fn test_generate_report_empty() {
+        let report = generate_report(vec![]);
+        assert_eq!(report.total_vulnerabilities, 0);
+        assert_eq!(report.critical, 0);
+        assert_eq!(report.high, 0);
+        assert_eq!(report.medium, 0);
+        assert_eq!(report.low, 0);
+        assert!(report.vulnerabilities.is_empty());
+    }
+
+    #[test]
+    fn test_generate_report_all_severities() {
+        let vulns = vec![
+            Vulnerability {
+                group: "a".to_string(), artifact: "a".to_string(),
+                current_version: "1.0".to_string(), cve_id: "CVE-1".to_string(),
+                severity: Severity::Critical, description: "".to_string(), fixed_version: None,
+            },
+            Vulnerability {
+                group: "b".to_string(), artifact: "b".to_string(),
+                current_version: "1.0".to_string(), cve_id: "CVE-2".to_string(),
+                severity: Severity::High, description: "".to_string(), fixed_version: None,
+            },
+            Vulnerability {
+                group: "c".to_string(), artifact: "c".to_string(),
+                current_version: "1.0".to_string(), cve_id: "CVE-3".to_string(),
+                severity: Severity::Medium, description: "".to_string(), fixed_version: None,
+            },
+            Vulnerability {
+                group: "d".to_string(), artifact: "d".to_string(),
+                current_version: "1.0".to_string(), cve_id: "CVE-4".to_string(),
+                severity: Severity::Low, description: "".to_string(), fixed_version: None,
+            },
+        ];
+
+        let report = generate_report(vulns);
+        assert_eq!(report.total_vulnerabilities, 4);
+        assert_eq!(report.critical, 1);
+        assert_eq!(report.high, 1);
+        assert_eq!(report.medium, 1);
+        assert_eq!(report.low, 1);
+    }
+
+    #[test]
+    fn test_extract_severity_variants() {
+        // CRITICAL
+        let vuln = serde_json::json!({"severity": [{"score": "CRITICAL"}]});
+        assert_eq!(extract_severity(&vuln), Severity::Critical);
+
+        // HIGH
+        let vuln = serde_json::json!({"severity": [{"score": "HIGH"}]});
+        assert_eq!(extract_severity(&vuln), Severity::High);
+
+        // MEDIUM
+        let vuln = serde_json::json!({"severity": [{"score": "MEDIUM"}]});
+        assert_eq!(extract_severity(&vuln), Severity::Medium);
+
+        // LOW
+        let vuln = serde_json::json!({"severity": [{"score": "LOW"}]});
+        assert_eq!(extract_severity(&vuln), Severity::Low);
+
+        // Unknown defaults to MEDIUM
+        let vuln = serde_json::json!({"severity": [{"score": "UNKNOWN"}]});
+        assert_eq!(extract_severity(&vuln), Severity::Medium);
+
+        // No severity defaults to MEDIUM
+        let vuln = serde_json::json!({});
+        assert_eq!(extract_severity(&vuln), Severity::Medium);
+    }
+
+    #[test]
+    fn test_extract_fixed_version() {
+        // Has fixed version
+        let vuln = serde_json::json!({
+            "affected": [{"versions": [{"fixed": "2.11.0"}]}]
+        });
+        assert_eq!(extract_fixed_version(&vuln, "2.10.0"), Some("2.11.0".to_string()));
+
+        // Fixed version not higher than current
+        // Fixed version not higher than current (string comparison: "1.0.0" < "2.10.0")
+        let vuln = serde_json::json!({
+            "affected": [{"versions": [{"fixed": "1.0.0"}]}]
+        });
+        assert_eq!(extract_fixed_version(&vuln, "2.10.0"), None);
+
+        // No affected array
+        let vuln = serde_json::json!({});
+        assert_eq!(extract_fixed_version(&vuln, "2.10.0"), None);
+
+        // Empty versions array
+        let vuln = serde_json::json!({"affected": [{"versions": []}]});
+        assert_eq!(extract_fixed_version(&vuln, "2.10.0"), None);
+
+        // No fixed field
+        let vuln = serde_json::json!({"affected": [{"versions": [{}]}]});
+        assert_eq!(extract_fixed_version(&vuln, "2.10.0"), None);
+    }
+
+    #[test]
+    fn test_audit_report_serialize() {
+        let report = AuditReport {
+            total_vulnerabilities: 1,
+            critical: 0,
+            high: 1,
+            medium: 0,
+            low: 0,
+            vulnerabilities: vec![Vulnerability {
+                group: "test".to_string(),
+                artifact: "a".to_string(),
+                current_version: "1.0".to_string(),
+                cve_id: "CVE-001".to_string(),
+                severity: Severity::High,
+                description: "test".to_string(),
+                fixed_version: None,
+            }],
+        };
+        let json = serde_json::to_string_pretty(&report).unwrap();
+        assert!(json.contains("total_vulnerabilities"));
+        assert!(json.contains("CVE-001"));
+    }
+
+    #[test]
+    fn test_severity_clone() {
+        let s = Severity::Critical;
+        let s2 = s.clone();
+        assert_eq!(s, s2);
+    }
+
+    #[test]
+    fn test_vulnerability_clone() {
+        let v = Vulnerability {
+            group: "g".to_string(), artifact: "a".to_string(),
+            current_version: "1.0".to_string(), cve_id: "CVE-1".to_string(),
+            severity: Severity::High, description: "d".to_string(),
+            fixed_version: Some("2.0".to_string()),
+        };
+        let v2 = v.clone();
+        assert_eq!(v.cve_id, v2.cve_id);
+        assert_eq!(v.severity, v2.severity);
     }
 }
+

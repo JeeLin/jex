@@ -244,4 +244,42 @@ mod tests {
         // Verify version comparison works
         assert_ne!(dep.current, dep.latest);
     }
+    #[test]
+    fn test_outdated_dep_same_version_display() {
+        let dep = OutdatedDep {
+            group: "org.apache.commons".to_string(),
+            artifact: "commons-lang3".to_string(),
+            current: "3.12.0".to_string(),
+            latest: "3.14.0".to_string(),
+        };
+        assert_eq!(dep.current, "3.12.0");
+        assert_eq!(dep.latest, "3.14.0");
+        assert_ne!(dep.current, dep.latest);
+    }
+
+    #[test]
+    fn test_outdated_dep_same_version() {
+        let dep = OutdatedDep {
+            group: "junit".to_string(),
+            artifact: "junit".to_string(),
+            current: "4.13.2".to_string(),
+            latest: "4.13.2".to_string(),
+        };
+        assert_eq!(dep.current, dep.latest);
+    }
+
+    #[test]
+    fn test_outdated_dep_json_serialization_full() {
+        let dep = OutdatedDep {
+            group: "com.fasterxml.jackson.core".to_string(),
+            artifact: "jackson-databind".to_string(),
+            current: "2.15.0".to_string(),
+            latest: "2.16.0".to_string(),
+        };
+        let json = serde_json::to_string_pretty(&dep).unwrap();
+        assert!(json.contains("jackson-databind"));
+        assert!(json.contains("2.15.0"));
+        let deserialized: OutdatedDep = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.group, "com.fasterxml.jackson.core");
+    }
 }

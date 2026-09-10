@@ -226,4 +226,29 @@ mod tests {
         assert!(path.to_string_lossy().contains(".jex"));
         assert!(path.to_string_lossy().ends_with("jex.pin.toml"));
     }
+    #[test]
+    fn test_pinned_dep_all_fields() {
+        let dep = PinnedDep {
+            coord: "org.slf4j:slf4j-api".to_string(),
+            version: "2.0.9".to_string(),
+            pinned_at: "2024-01-01".to_string(),
+        };
+        assert_eq!(dep.coord, "org.slf4j:slf4j-api");
+        assert_eq!(dep.version, "2.0.9");
+        assert_eq!(dep.pinned_at, "2024-01-01");
+    }
+
+    #[test]
+    fn test_pinned_dep_serde_roundtrip_full() {
+        let dep = PinnedDep {
+            coord: "com.google.code.gson:gson".to_string(),
+            version: "2.11.0".to_string(),
+            pinned_at: "2024-06-15".to_string(),
+        };
+        let json = serde_json::to_string(&dep).unwrap();
+        let deserialized: PinnedDep = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.coord, dep.coord);
+        assert_eq!(deserialized.version, dep.version);
+        assert_eq!(deserialized.pinned_at, dep.pinned_at);
+    }
 }

@@ -149,7 +149,7 @@ fn fetch_license_from_pom(group: &str, artifact: &str, version: &str) -> Result<
 fn extract_license_from_pom(pom: &str) -> String {
     // 简单的字符串解析（生产环境应使用 XML 解析器）
     if let Some(start) = pom.find("<license><name>") {
-        let rest = &pom[start + 14..];
+        let rest = &pom[start + 15..];
         if let Some(end) = rest.find("</name>") {
             return rest[..end].to_string();
         }
@@ -350,5 +350,186 @@ mod tests {
         assert!(!report.compatible);
         assert!(!report.conflicts.is_empty());
         assert_eq!(report.summary.strong_copyleft, 1);
+    }
+    #[test]
+    fn test_extract_license_from_pom_with_license() {
+        let pom = "<project><licenses><license><name>The MIT License</name></license></licenses></project>";
+        assert_eq!(extract_license_from_pom(pom), "The MIT License");
+    }
+
+    #[test]
+    fn test_extract_license_from_pom_no_license() {
+        let pom = r#"<?xml version="1.0"?>
+<project><name>test</name></project>"#;
+        assert_eq!(extract_license_from_pom(pom), "Unknown");
+    }
+
+    #[test]
+    fn test_extract_license_from_pom_empty() {
+        assert_eq!(extract_license_from_pom(""), "Unknown");
+    }
+
+    #[test]
+    fn test_normalize_spdx_id_all_variants() {
+        assert_eq!(normalize_spdx_id("MIT"), "MIT");
+        assert_eq!(normalize_spdx_id("mit"), "MIT");
+        assert_eq!(normalize_spdx_id("Apache License 2.0"), "Apache-2.0");
+        assert_eq!(normalize_spdx_id("apache-2.0"), "Apache-2.0");
+        assert_eq!(normalize_spdx_id("BSD 2-Clause"), "BSD-2-Clause");
+        assert_eq!(normalize_spdx_id("bsd 2 clause"), "BSD-2-Clause");
+        assert_eq!(normalize_spdx_id("BSD 3-Clause"), "BSD-3-Clause");
+        assert_eq!(normalize_spdx_id("bsd 3 clause"), "BSD-3-Clause");
+        assert_eq!(normalize_spdx_id("GPL v3"), "GPL-3.0");
+        assert_eq!(normalize_spdx_id("GPL-3.0"), "GPL-3.0");
+        assert_eq!(normalize_spdx_id("GNU General Public License v3"), "GPL-3.0");
+        assert_eq!(normalize_spdx_id("GPL v2"), "GPL-2.0");
+        assert_eq!(normalize_spdx_id("LGPL v3"), "LGPL-3.0");
+        assert_eq!(normalize_spdx_id("LGPL v2.1"), "LGPL-2.1");
+        assert_eq!(normalize_spdx_id("EPL 2.0"), "EPL-2.0");
+        assert_eq!(normalize_spdx_id("MPL 2.0"), "MPL-2.0");
+        // Unknown stays as-is
+        assert_eq!(normalize_spdx_id("WTFPL"), "WTFPL");
+        assert_eq!(normalize_spdx_id("Custom-Proprietary"), "Custom-Proprietary");
+    }
+
+    #[test]
+    fn test_categorize_license_all_variants() {
+        // Permissive
+        assert_eq!(categorize_license("MIT"), LicenseCategory::Permissive);
+        assert_eq!(categorize_license("Apache-2.0"), LicenseCategory::Permissive);
+        assert_eq!(categorize_license("BSD-2-Clause"), LicenseCategory::Permissive);
+        assert_eq!(categorize_license("BSD-3-Clause"), LicenseCategory::Permissive);
+        assert_eq!(categorize_license("ISC"), LicenseCategory::Permissive);
+        assert_eq!(categorize_license("0BSD"), LicenseCategory::Permissive);
+        // Weak copyleft
+        assert_eq!(categorize_license("LGPL-2.1"), LicenseCategory::WeakCopyleft);
+        assert_eq!(categorize_license("LGPL-3.0"), LicenseCategory::WeakCopyleft);
+        assert_eq!(categorize_license("MPL-2.0"), LicenseCategory::WeakCopyleft);
+        assert_eq!(categorize_license("EPL-2.0"), LicenseCategory::WeakCopyleft);
+        // Strong copyleft
+        assert_eq!(categorize_license("GPL-2.0"), LicenseCategory::StrongCopyleft);
+        assert_eq!(categorize_license("GPL-3.0"), LicenseCategory::StrongCopyleft);
+        assert_eq!(categorize_license("AGPL-3.0"), LicenseCategory::StrongCopyleft);
+        // Unknown
+        assert_eq!(categorize_license("WTFPL"), LicenseCategory::Unknown);
+        assert_eq!(categorize_license("BSD-4-Clause"), LicenseCategory::Unknown);
+    }
+
+    #[test]
+    fn test_license_summary_serialize() {
+        let mut counts = HashMap::new();
+        counts.insert("MIT".to_string(), 5);
+        counts.insert("Apache-2.0".to_string(), 3);
+        let summary = LicenseSummary {
+            total_dependencies: 10,
+            permissive: 8,
+            weak_copyleft: 1,
+            strong_copyleft: 1,
+            unknown: 0,
+            license_counts: counts,
+        };
+        let json = serde_json::to_string(&summary).unwrap();
+        assert!(json.contains("total_dependencies"));
+        assert!(json.contains("MIT"));
+        let deserialized: LicenseSummary = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.total_dependencies, 10);
+        assert_eq!(deserialized.permissive, 8);
+    }
+
+    #[test]
+    fn test_compliance_conflict_serialize() {
+        let conflict = ComplianceConflict {
+            license1: "MIT".to_string(),
+            license2: "GPL-3.0".to_string(),
+            reason: "incompatible".to_string(),
+        };
+        let json = serde_json::to_string(&conflict).unwrap();
+        assert!(json.contains("MIT"));
+        let deserialized: ComplianceConflict = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.license1, "MIT");
+    }
+
+    #[test]
+    fn test_compliance_report_serialize() {
+        let report = ComplianceReport {
+            compatible: true,
+            conflicts: vec![],
+            warnings: vec!["check dependencies".to_string()],
+            summary: LicenseSummary {
+                total_dependencies: 1,
+                permissive: 1,
+                weak_copyleft: 0,
+                strong_copyleft: 0,
+                unknown: 0,
+                license_counts: HashMap::new(),
+            },
+        };
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(json.contains("compatible"));
+        let deserialized: ComplianceReport = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.compatible);
+        assert_eq!(deserialized.warnings.len(), 1);
+    }
+
+    #[test]
+    fn test_analyze_compatibility_empty() {
+        let report = analyze_compatibility(&[]);
+        assert!(report.compatible);
+        assert!(report.conflicts.is_empty());
+        assert_eq!(report.summary.total_dependencies, 0);
+    }
+
+    #[test]
+    fn test_analyze_compatibility_weak_copyleft_only() {
+        let licenses = vec![
+            LicenseInfo {
+                group: "a".to_string(), artifact: "b".to_string(),
+                version: "1.0".to_string(), license: "LGPL-2.1".to_string(),
+                spdx_id: "LGPL-2.1".to_string(), category: LicenseCategory::WeakCopyleft,
+            },
+        ];
+        let report = analyze_compatibility(&licenses);
+        assert!(report.compatible);
+        assert_eq!(report.summary.weak_copyleft, 1);
+    }
+
+    #[test]
+    fn test_analyze_compatibility_unknown_only() {
+        let licenses = vec![
+            LicenseInfo {
+                group: "a".to_string(), artifact: "b".to_string(),
+                version: "1.0".to_string(), license: "Proprietary".to_string(),
+                spdx_id: "LicenseRef-Unknown".to_string(), category: LicenseCategory::Unknown,
+            },
+        ];
+        let report = analyze_compatibility(&licenses);
+        assert!(report.compatible);
+        assert_eq!(report.summary.unknown, 1);
+    }
+
+    #[test]
+    fn test_license_info_clone() {
+        let info = LicenseInfo {
+            group: "g".to_string(), artifact: "a".to_string(),
+            version: "1.0".to_string(), license: "MIT".to_string(),
+            spdx_id: "MIT".to_string(), category: LicenseCategory::Permissive,
+        };
+        let cloned = info.clone();
+        assert_eq!(cloned.group, "g");
+        assert_eq!(cloned.spdx_id, "MIT");
+    }
+
+    #[test]
+    fn test_license_category_clone() {
+        let c = LicenseCategory::StrongCopyleft;
+        let cloned = c;
+        assert_eq!(cloned, LicenseCategory::StrongCopyleft);
+    }
+
+    #[test]
+    fn test_normalize_spdx_id_case_insensitive() {
+        assert_eq!(normalize_spdx_id("MIT"), "MIT");
+        assert_eq!(normalize_spdx_id("mit"), "MIT");
+        assert_eq!(normalize_spdx_id("Mit"), "MIT");
     }
 }

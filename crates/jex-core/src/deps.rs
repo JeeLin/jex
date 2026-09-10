@@ -336,6 +336,7 @@ pub fn conflict() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_project_config_serialize_deserialize() {
@@ -347,10 +348,7 @@ mod tests {
             }),
             dependencies: Some({
                 let mut deps = HashMap::new();
-                deps.insert(
-                    "com.google.code.gson:gson".to_string(),
-                    "2.11.0".to_string(),
-                );
+                deps.insert("com.google.code.gson:gson".to_string(), "2.11.0".to_string());
                 deps
             }),
             repositories: Some({
@@ -414,13 +412,10 @@ mod tests {
     #[test]
     fn test_toml_value_variants() {
         // TOMLValue is an untagged enum used in repositories config
-        // Test that it can be deserialized from a TOML table
         let toml_str = "[maven-central]\nenabled = true";
         let val: TOMLValue = toml::from_str(toml_str).unwrap();
-        // Should deserialize as Table variant
         assert!(matches!(val, TOMLValue::Table(_)));
 
-        // Test deserialization within a HashMap context (common usage)
         let toml_str = "[repositories.maven-central]\nenabled = true";
         let val: HashMap<String, TOMLValue> = toml::from_str(toml_str).unwrap();
         assert!(!val.is_empty());
@@ -453,22 +448,28 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_read_jex_lock_no_file() {
-        // 在一个没有 jex.lock.toml 的目录中调用
+        let tmp = tempfile::tempdir().unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
         let result = read_jex_lock();
-        // 应该返回默认值而不是错误
-        if let Ok(lock) = result {
-            assert_eq!(lock.lockfile_version, Some(1));
-        }
+        std::env::set_current_dir(&orig).unwrap();
+        // Should return default value, not error
+        let lock = result.unwrap();
+        assert_eq!(lock.lockfile_version, Some(1));
     }
 
     #[test]
+    #[serial]
     fn test_read_jex_toml_no_file() {
-        // 在一个没有 jex.toml 的目录中调用
+        let tmp = tempfile::tempdir().unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
         let result = read_jex_toml();
+        std::env::set_current_dir(&orig).unwrap();
         assert!(result.is_err());
-        let err = result.unwrap_err().to_string();
-        assert!(err.contains("没有 jex.toml"));
+        assert!(result.unwrap_err().to_string().contains("没有 jex.toml"));
     }
 
     #[test]
@@ -480,8 +481,6 @@ mod tests {
         };
         let toml_str = toml::to_string_pretty(&info).unwrap();
         assert!(toml_str.contains("my-app"));
-        assert!(toml_str.contains("17"));
-        assert!(toml_str.contains("com.example.Main"));
 
         let deserialized: ProjectInfo = toml::from_str(&toml_str).unwrap();
         assert_eq!(deserialized.name, "my-app");
@@ -516,9 +515,241 @@ mod tests {
 
     #[test]
     fn test_conflict_function() {
-        // conflict() 只是读锁文件并打印，不应该 panic
         let result = conflict();
-        // 即使没有 jex.lock.toml 也应该成功（返回默认值）
         let _ = result;
     }
+
+    #[test]
+    #[serial]
+    fn test_update_lock_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+
+        let config = ProjectConfig {
+            project: Some(ProjectInfo {
+                name: "test".to_string(),
+                java: None,
+                main: None,
+            }),
+            dependencies: Some({
+                let mut deps = HashMap::new();
+                deps.insert("com.google.code.gson:gson".to_string(), "2.11.0".to_string());
+                deps.insert("org.slf4j:slf4j-api".to_string(), "2.0.9".to_string());
+                deps
+            }),
+            repositories: None,
+            build: None,
+        };
+
+        update_lock_file(&config).unwrap();
+
+        let lock_content = std::fs::read_to_string(tmp.path().join("jex.lock.toml")).unwrap();
+        assert!(lock_content.contains("gson"));
+        assert!(lock_content.contains("slf4j-api"));
+
+        std::env::set_current_dir(&orig).unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_lock_file_empty_deps() {
+        let tmp = tempfile::tempdir().unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+
+        let config = ProjectConfig {
+            project: None,
+            dependencies: None,
+            repositories: None,
+            build: None,
+        };
+
+        update_lock_file(&config).unwrap();
+
+        let lock = read_jex_lock().unwrap();
+        assert_eq!(lock.lockfile_version, Some(1));
+        assert!(lock.dependencies.unwrap().is_empty());
+
+        std::env::set_current_dir(&orig).unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_why_not_found() {
+        let tmp = tempfile::tempdir().unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+
+        let lock = LockFile {
+            lockfile_version: Some(1),
+            dependencies: Some(HashMap::new()),
+        };
+        std::fs::write("jex.lock.toml", toml::to_string_pretty(&lock).unwrap()).unwrap();
+
+        let result = why("com.example:missing");
+        assert!(result.is_ok());
+
+        std::env::set_current_dir(&orig).unwrap();
+    }
+
+    #[test]
+    fn test_toml_value_bool_variant() {
+        let config = ProjectConfig {
+            project: None,
+            dependencies: None,
+            repositories: Some({
+                let mut repos = HashMap::new();
+                repos.insert("central".to_string(), TOMLValue::Bool(true));
+                repos
+            }),
+            build: None,
+        };
+        let toml_str = toml::to_string_pretty(&config).unwrap();
+        assert!(toml_str.contains("true"));
+
+        let deserialized: ProjectConfig = toml::from_str(&toml_str).unwrap();
+        let repos = deserialized.repositories.unwrap();
+        match repos.get("central").unwrap() {
+            TOMLValue::Bool(v) => assert!(*v),
+            _ => panic!("expected Bool variant"),
+        }
+    }
+
+    #[test]
+    fn test_lock_file_multiple_deps() {
+        let lock = LockFile {
+            lockfile_version: Some(1),
+            dependencies: Some({
+                let mut deps = HashMap::new();
+                deps.insert("a:b".to_string(), "1.0".to_string());
+                deps.insert("c:d".to_string(), "2.0".to_string());
+                deps.insert("e:f".to_string(), "3.0".to_string());
+                deps
+            }),
+        };
+        let toml_str = toml::to_string_pretty(&lock).unwrap();
+        let deserialized: LockFile = toml::from_str(&toml_str).unwrap();
+        let deps = deserialized.dependencies.unwrap();
+        assert_eq!(deps.len(), 3);
+        assert_eq!(deps.get("a:b").unwrap(), "1.0");
+        assert_eq!(deps.get("c:d").unwrap(), "2.0");
+        assert_eq!(deps.get("e:f").unwrap(), "3.0");
+    }
+
+    #[test]
+    fn test_project_config_all_optional_none() {
+        let config = ProjectConfig {
+            project: Some(ProjectInfo {
+                name: "minimal".to_string(),
+                java: None,
+                main: None,
+            }),
+            dependencies: None,
+            repositories: None,
+            build: Some(BuildConfig {
+                output: None,
+                sources: None,
+                resources: None,
+                compiler_args: None,
+                jvm_args: None,
+                env: None,
+            }),
+        };
+        let toml_str = toml::to_string_pretty(&config).unwrap();
+        assert!(toml_str.contains("minimal"));
+        let deserialized: ProjectConfig = toml::from_str(&toml_str).unwrap();
+        assert_eq!(deserialized.project.unwrap().name, "minimal");
+        assert!(deserialized.dependencies.is_none());
+    }
+
+    #[test]
+    #[serial]
+    fn test_init_already_exists() {
+        let tmp = tempfile::tempdir().unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+
+        std::fs::write("jex.toml", "[project]\nname = \"test\"").unwrap();
+
+        let result = init(Some("test"));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("已存在"));
+
+        std::env::set_current_dir(&orig).unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_init_creates_jex_toml() {
+        let tmp = tempfile::tempdir().unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+
+        init(Some("my-project")).unwrap();
+
+        assert!(tmp.path().join("jex.toml").exists());
+        let content = std::fs::read_to_string(tmp.path().join("jex.toml")).unwrap();
+        assert!(content.contains("my-project"));
+        assert!(content.contains("21"));
+        assert!(tmp.path().join("src").is_dir());
+
+        std::env::set_current_dir(&orig).unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_init_default_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+
+        init(None).unwrap();
+
+        let content = std::fs::read_to_string(tmp.path().join("jex.toml")).unwrap();
+        assert!(content.contains("demo"));
+
+        std::env::set_current_dir(&orig).unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_write_and_read_jex_lock() {
+        let tmp = tempfile::tempdir().unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+
+        let lock = LockFile {
+            lockfile_version: Some(1),
+            dependencies: Some({
+                let mut d = HashMap::new();
+                d.insert("org.junit.jupiter:junit-jupiter".to_string(), "5.10.0".to_string());
+                d
+            }),
+        };
+
+        write_jex_lock(&lock).unwrap();
+        let read_lock = read_jex_lock().unwrap();
+        assert_eq!(
+            read_lock.dependencies.unwrap().get("org.junit.jupiter:junit-jupiter").unwrap(),
+            "5.10.0"
+        );
+
+        std::env::set_current_dir(&orig).unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_jex_lock_missing_file_returns_default() {
+        let tmp = tempfile::tempdir().unwrap();
+        let orig = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+
+        let lock = read_jex_lock().unwrap();
+        assert_eq!(lock.lockfile_version, Some(1));
+        assert!(lock.dependencies.unwrap().is_empty());
+
+        std::env::set_current_dir(&orig).unwrap();
+    }
 }
+

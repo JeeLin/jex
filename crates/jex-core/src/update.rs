@@ -260,4 +260,82 @@ mod tests {
         let url = find_asset_url(&assets, &("windows".to_string(), "amd64".to_string())).unwrap();
         assert_eq!(url, "https://example.com/jex-windows-amd64.exe");
     }
+
+    #[test]
+    fn test_needs_update_equal_three_part() {
+        assert!(!needs_update("1.2.3", "1.2.3"));
+    }
+
+    #[test]
+    fn test_needs_update_major_reversed() {
+        assert!(!needs_update("2.0.0", "1.0.0"));
+    }
+
+    #[test]
+    fn test_needs_update_minor_reversed() {
+        assert!(!needs_update("1.2.0", "1.1.0"));
+    }
+
+    #[test]
+    fn test_needs_update_patch_reversed() {
+        assert!(!needs_update("1.0.2", "1.0.1"));
+    }
+
+    #[test]
+    fn test_find_asset_url_not_found() {
+        let assets = vec![
+            GitHubAsset {
+                name: "jex-linux-amd64".to_string(),
+                browser_download_url: "https://example.com/jex-linux-amd64".to_string(),
+            },
+        ];
+        let result = find_asset_url(&assets, &("windows".to_string(), "arm64".to_string()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_find_asset_url_multiple_platforms() {
+        let assets = vec![
+            GitHubAsset { name: "jex-linux-amd64".to_string(), browser_download_url: "url1".to_string() },
+            GitHubAsset { name: "jex-linux-arm64".to_string(), browser_download_url: "url2".to_string() },
+            GitHubAsset { name: "jex-darwin-amd64".to_string(), browser_download_url: "url3".to_string() },
+            GitHubAsset { name: "jex-darwin-arm64".to_string(), browser_download_url: "url4".to_string() },
+            GitHubAsset { name: "jex-windows-amd64.exe".to_string(), browser_download_url: "url5".to_string() },
+        ];
+        assert_eq!(find_asset_url(&assets, &("linux".to_string(), "arm64".to_string())).unwrap(), "url2");
+        assert_eq!(find_asset_url(&assets, &("darwin".to_string(), "amd64".to_string())).unwrap(), "url3");
+        assert_eq!(find_asset_url(&assets, &("darwin".to_string(), "arm64".to_string())).unwrap(), "url4");
+        assert_eq!(find_asset_url(&assets, &("windows".to_string(), "amd64".to_string())).unwrap(), "url5");
+    }
+
+    #[test]
+    fn test_find_asset_url_empty_assets() {
+        let assets: Vec<GitHubAsset> = vec![];
+        let result = find_asset_url(&assets, &("linux".to_string(), "amd64".to_string()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_update_info_struct() {
+        let info = UpdateInfo {
+            latest_version: "1.0.0".to_string(),
+            download_url: "https://example.com/jex".to_string(),
+            release_notes: "Initial release".to_string(),
+        };
+        assert_eq!(info.latest_version, "1.0.0");
+        assert!(info.download_url.contains("example.com"));
+        assert_eq!(info.release_notes, "Initial release");
+    }
+
+    #[test]
+    fn test_update_info_clone() {
+        let info = UpdateInfo {
+            latest_version: "2.0.0".to_string(),
+            download_url: "https://example.com/jex".to_string(),
+            release_notes: "v2".to_string(),
+        };
+        let cloned = info.clone();
+        assert_eq!(cloned.latest_version, "2.0.0");
+        assert_eq!(cloned.release_notes, "v2");
+    }
 }

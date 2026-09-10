@@ -61,9 +61,11 @@ fn http_get(url: &str) -> Result<String> {
 
 /// 获取 Maven Central search API 返回的版本列表（降序排列）
 fn search_versions(group: &str, artifact: &str) -> Result<Vec<String>> {
+    let base = crate::config::config_maven_mirror()
+        .unwrap_or_else(|| "https://search.maven.org".to_string());
     let url = format!(
-        "https://search.maven.org/solrsearch/select?q=g:{}+AND+a:{}&core=gav&rows=200&wt=json",
-        group, artifact
+        "{}/solrsearch/select?q=g:{}+AND+a:{}&core=gav&rows=200&wt=json",
+        base.trim_end_matches('/'), group, artifact
     );
     let body = http_get(&url)?;
     let sr: SearchResponse =
@@ -85,9 +87,11 @@ pub fn resolve_latest(coord: &str) -> Result<String> {
 /// 获取 POM 文件内容
 fn fetch_pom(group: &str, artifact: &str, version: &str) -> Result<String> {
     let path = group.replace('.', "/");
+    let base = crate::config::config_maven_mirror()
+        .unwrap_or_else(|| "https://repo1.maven.org/maven2".to_string());
     let url = format!(
-        "https://repo1.maven.org/maven2/{}/{}/{}/{}-{}.pom",
-        path, artifact, version, artifact, version
+        "{}/{}/{}/{}/{}-{}.pom",
+        base.trim_end_matches('/'), path, artifact, version, artifact, version
     );
     let body = http_get(&url)?;
     if body.is_empty() {

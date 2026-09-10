@@ -107,15 +107,24 @@ pub fn install(version: &str) -> Result<()> {
         return Ok(());
     }
 
-    println!("正在从 Adoptium 下载 JDK {}...", version);
 
     // 构建下载 URL
     let os = adoptium_os_str()?;
     let arch = adoptium_arch_str()?;
-    let url = format!(
+    let mut url = format!(
         "https://api.adoptium.net/v3/binary/latest/{}/ga/{}/{}/jdk/hotspot/normal/eclipse",
         version, os, arch
     );
+    // 如果配置了镜像，替换 baseUrl
+    let source_label;
+    if let Some(mirror) = crate::config::config_jdk_mirror() {
+        // mirror 示例: "https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
+        url = format!("{}/{}", mirror.trim_end_matches('/'), url.split("adoptium.net/").nth(1).unwrap_or(""));
+        source_label = format!("镜像 ({})", mirror);
+    } else {
+        source_label = "Adoptium".to_string();
+    }
+    println!("正在从 {} 下载 JDK {}...", source_label, version);
 
     // 下载并解压
     let temp_dir = dir.join(format!("{}.tmp", version));
@@ -228,7 +237,8 @@ pub fn use_version(version: &str) -> Result<()> {
 /// 列出已安装版本和当前版本
 pub fn list() -> Result<()> {
     let installed = list_installed()?;
-    let current = current_version()?;
+    let current = current_version()?
+        .or_else(|| crate::config::config_default_jdk_version());
 
     if installed.is_empty() {
         println!("未安装任何 JDK 版本");

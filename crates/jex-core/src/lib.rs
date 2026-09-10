@@ -10,6 +10,7 @@ pub mod diag;
 pub mod error;
 pub mod export;
 pub mod fmt;
+pub mod i18n;
 pub mod import;
 pub mod jdk;
 pub mod jfr;

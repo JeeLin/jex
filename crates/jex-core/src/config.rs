@@ -49,6 +49,25 @@ pub fn read_fmt_config() -> Result<crate::fmt::FmtConfig> {
     Ok(config)
 }
 
+/// 读取全局语言配置
+/// 优先级: ~/.jex/config.toml [i18n] lang > JEX_LANG 环境变量 > 默认 English
+pub fn read_language_config() -> crate::i18n::Lang {
+    if let Ok(home) = jex_home() {
+        let f = home.join("config.toml");
+        if let Ok(s) = std::fs::read_to_string(&f) {
+            if let Ok(v) = s.parse::<toml::Value>() {
+                if let Some(ls) = v.get("i18n").and_then(|s| s.get("lang")).and_then(|v| v.as_str()) {
+                    if let Some(lang) = crate::i18n::Lang::from_str(ls) { return lang; }
+                }
+            }
+        }
+    }
+    if let Ok(e) = std::env::var("JEX_LANG") {
+        if let Some(lang) = crate::i18n::Lang::from_str(&e) { return lang; }
+    }
+    crate::i18n::Lang::En
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

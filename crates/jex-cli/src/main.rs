@@ -58,7 +58,7 @@ enum Commands {
     Tree(TreeArgs),
 
     /// 为何引入某依赖
-    #[command(alias = "w")]
+    #[command(alias = "wh")]
     Why(WhyArgs),
 
     /// 依赖冲突分析
@@ -86,7 +86,7 @@ enum Commands {
     Java(JavaCommand),
 
     /// 交互式 Java 求值(jshell)
-    #[command(alias = "rp")]
+    #[command(alias = "re")]
     Repl(ReplArgs),
 
     /// 生成 shell 自动补全脚本
@@ -106,7 +106,7 @@ enum Commands {
     Outdated,
 
     /// 检查依赖安全漏洞
-    #[command(alias = "a")]
+    #[command(alias = "au")]
     Audit(AuditArgs),
     /// 升级依赖
     #[command(alias = "u")]
@@ -117,7 +117,7 @@ enum Commands {
     License(LicenseArgs),
 
     /// 生成项目依赖分析报告
-    #[command(alias = "r")]
+    #[command(alias = "rp")]
     Report(ReportArgs),
 
     /// 锁定依赖版本
@@ -125,7 +125,7 @@ enum Commands {
     Pin(PinArgs),
 
     /// 管理依赖缓存
-    #[command(alias = "c")]
+    #[command(alias = "cc")]
     Cache(CacheArgs),
 
     /// 检查依赖许可证合规性
@@ -429,7 +429,7 @@ enum ConfigCommand {
         key: String,
     },
     /// Set a config value
-    #[command(alias = "s")]
+    #[command(alias = "sv")]
     Set {
         /// Config key (e.g. i18n.lang)
         key: String,
@@ -437,7 +437,7 @@ enum ConfigCommand {
         value: String,
     },
     /// List all config values
-    #[command(alias = "l")]
+    #[command(alias = "ls")]
     List,
 }
 

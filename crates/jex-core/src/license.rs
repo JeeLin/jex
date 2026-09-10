@@ -381,7 +381,10 @@ mod tests {
         assert_eq!(normalize_spdx_id("bsd 3 clause"), "BSD-3-Clause");
         assert_eq!(normalize_spdx_id("GPL v3"), "GPL-3.0");
         assert_eq!(normalize_spdx_id("GPL-3.0"), "GPL-3.0");
-        assert_eq!(normalize_spdx_id("GNU General Public License v3"), "GPL-3.0");
+        assert_eq!(
+            normalize_spdx_id("GNU General Public License v3"),
+            "GPL-3.0"
+        );
         assert_eq!(normalize_spdx_id("GPL v2"), "GPL-2.0");
         assert_eq!(normalize_spdx_id("LGPL v3"), "LGPL-3.0");
         assert_eq!(normalize_spdx_id("LGPL v2.1"), "LGPL-2.1");
@@ -389,27 +392,54 @@ mod tests {
         assert_eq!(normalize_spdx_id("MPL 2.0"), "MPL-2.0");
         // Unknown stays as-is
         assert_eq!(normalize_spdx_id("WTFPL"), "WTFPL");
-        assert_eq!(normalize_spdx_id("Custom-Proprietary"), "Custom-Proprietary");
+        assert_eq!(
+            normalize_spdx_id("Custom-Proprietary"),
+            "Custom-Proprietary"
+        );
     }
 
     #[test]
     fn test_categorize_license_all_variants() {
         // Permissive
         assert_eq!(categorize_license("MIT"), LicenseCategory::Permissive);
-        assert_eq!(categorize_license("Apache-2.0"), LicenseCategory::Permissive);
-        assert_eq!(categorize_license("BSD-2-Clause"), LicenseCategory::Permissive);
-        assert_eq!(categorize_license("BSD-3-Clause"), LicenseCategory::Permissive);
+        assert_eq!(
+            categorize_license("Apache-2.0"),
+            LicenseCategory::Permissive
+        );
+        assert_eq!(
+            categorize_license("BSD-2-Clause"),
+            LicenseCategory::Permissive
+        );
+        assert_eq!(
+            categorize_license("BSD-3-Clause"),
+            LicenseCategory::Permissive
+        );
         assert_eq!(categorize_license("ISC"), LicenseCategory::Permissive);
         assert_eq!(categorize_license("0BSD"), LicenseCategory::Permissive);
         // Weak copyleft
-        assert_eq!(categorize_license("LGPL-2.1"), LicenseCategory::WeakCopyleft);
-        assert_eq!(categorize_license("LGPL-3.0"), LicenseCategory::WeakCopyleft);
+        assert_eq!(
+            categorize_license("LGPL-2.1"),
+            LicenseCategory::WeakCopyleft
+        );
+        assert_eq!(
+            categorize_license("LGPL-3.0"),
+            LicenseCategory::WeakCopyleft
+        );
         assert_eq!(categorize_license("MPL-2.0"), LicenseCategory::WeakCopyleft);
         assert_eq!(categorize_license("EPL-2.0"), LicenseCategory::WeakCopyleft);
         // Strong copyleft
-        assert_eq!(categorize_license("GPL-2.0"), LicenseCategory::StrongCopyleft);
-        assert_eq!(categorize_license("GPL-3.0"), LicenseCategory::StrongCopyleft);
-        assert_eq!(categorize_license("AGPL-3.0"), LicenseCategory::StrongCopyleft);
+        assert_eq!(
+            categorize_license("GPL-2.0"),
+            LicenseCategory::StrongCopyleft
+        );
+        assert_eq!(
+            categorize_license("GPL-3.0"),
+            LicenseCategory::StrongCopyleft
+        );
+        assert_eq!(
+            categorize_license("AGPL-3.0"),
+            LicenseCategory::StrongCopyleft
+        );
         // Unknown
         assert_eq!(categorize_license("WTFPL"), LicenseCategory::Unknown);
         assert_eq!(categorize_license("BSD-4-Clause"), LicenseCategory::Unknown);
@@ -481,13 +511,14 @@ mod tests {
 
     #[test]
     fn test_analyze_compatibility_weak_copyleft_only() {
-        let licenses = vec![
-            LicenseInfo {
-                group: "a".to_string(), artifact: "b".to_string(),
-                version: "1.0".to_string(), license: "LGPL-2.1".to_string(),
-                spdx_id: "LGPL-2.1".to_string(), category: LicenseCategory::WeakCopyleft,
-            },
-        ];
+        let licenses = vec![LicenseInfo {
+            group: "a".to_string(),
+            artifact: "b".to_string(),
+            version: "1.0".to_string(),
+            license: "LGPL-2.1".to_string(),
+            spdx_id: "LGPL-2.1".to_string(),
+            category: LicenseCategory::WeakCopyleft,
+        }];
         let report = analyze_compatibility(&licenses);
         assert!(report.compatible);
         assert_eq!(report.summary.weak_copyleft, 1);
@@ -495,13 +526,14 @@ mod tests {
 
     #[test]
     fn test_analyze_compatibility_unknown_only() {
-        let licenses = vec![
-            LicenseInfo {
-                group: "a".to_string(), artifact: "b".to_string(),
-                version: "1.0".to_string(), license: "Proprietary".to_string(),
-                spdx_id: "LicenseRef-Unknown".to_string(), category: LicenseCategory::Unknown,
-            },
-        ];
+        let licenses = vec![LicenseInfo {
+            group: "a".to_string(),
+            artifact: "b".to_string(),
+            version: "1.0".to_string(),
+            license: "Proprietary".to_string(),
+            spdx_id: "LicenseRef-Unknown".to_string(),
+            category: LicenseCategory::Unknown,
+        }];
         let report = analyze_compatibility(&licenses);
         assert!(report.compatible);
         assert_eq!(report.summary.unknown, 1);
@@ -510,9 +542,12 @@ mod tests {
     #[test]
     fn test_license_info_clone() {
         let info = LicenseInfo {
-            group: "g".to_string(), artifact: "a".to_string(),
-            version: "1.0".to_string(), license: "MIT".to_string(),
-            spdx_id: "MIT".to_string(), category: LicenseCategory::Permissive,
+            group: "g".to_string(),
+            artifact: "a".to_string(),
+            version: "1.0".to_string(),
+            license: "MIT".to_string(),
+            spdx_id: "MIT".to_string(),
+            category: LicenseCategory::Permissive,
         };
         let cloned = info.clone();
         assert_eq!(cloned.group, "g");

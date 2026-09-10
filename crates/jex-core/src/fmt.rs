@@ -362,8 +362,14 @@ mod tests {
     #[test]
     fn test_format_changed_multiple_excludes() {
         let config = FmtConfig {
-            style: Style::Google, aosp: false, skip_future: false,
-            exclude: vec!["build/".to_string(), "target/".to_string(), "gen/".to_string()],
+            style: Style::Google,
+            aosp: false,
+            skip_future: false,
+            exclude: vec![
+                "build/".to_string(),
+                "target/".to_string(),
+                "gen/".to_string(),
+            ],
         };
         let files: Vec<_> = vec![
             PathBuf::from("build/A.java"),
@@ -371,10 +377,13 @@ mod tests {
             PathBuf::from("gen/C.java"),
             PathBuf::from("src/Main.java"),
         ];
-        let filtered: Vec<_> = files.into_iter().filter(|f| {
-            let s = f.to_string_lossy();
-            !config.exclude.iter().any(|e| s.contains(e.as_str()))
-        }).collect();
+        let filtered: Vec<_> = files
+            .into_iter()
+            .filter(|f| {
+                let s = f.to_string_lossy();
+                !config.exclude.iter().any(|e| s.contains(e.as_str()))
+            })
+            .collect();
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].to_string_lossy(), "src/Main.java");
     }
@@ -387,17 +396,22 @@ mod tests {
             PathBuf::from("src/readme.md"),
             PathBuf::from("build/Test.java"),
         ];
-        let filtered: Vec<_> = files.into_iter().filter(|f| {
-            let s = f.to_string_lossy();
-            !config.exclude.iter().any(|e| s.contains(e.as_str()))
-        }).collect();
+        let filtered: Vec<_> = files
+            .into_iter()
+            .filter(|f| {
+                let s = f.to_string_lossy();
+                !config.exclude.iter().any(|e| s.contains(e.as_str()))
+            })
+            .collect();
         assert_eq!(filtered.len(), 2);
     }
 
     #[test]
     fn test_format_changed_nested_exclude() {
         let config = FmtConfig {
-            style: Style::Google, aosp: false, skip_future: false,
+            style: Style::Google,
+            aosp: false,
+            skip_future: false,
             exclude: vec!["build/".to_string()],
         };
         // Nested path still matches "build/"
@@ -405,10 +419,13 @@ mod tests {
             PathBuf::from("project/build/output/Test.java"),
             PathBuf::from("src/Main.java"),
         ];
-        let filtered: Vec<_> = files.into_iter().filter(|f| {
-            let s = f.to_string_lossy();
-            !config.exclude.iter().any(|e| s.contains(e.as_str()))
-        }).collect();
+        let filtered: Vec<_> = files
+            .into_iter()
+            .filter(|f| {
+                let s = f.to_string_lossy();
+                !config.exclude.iter().any(|e| s.contains(e.as_str()))
+            })
+            .collect();
         assert_eq!(filtered.len(), 1);
     }
 

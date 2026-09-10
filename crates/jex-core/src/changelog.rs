@@ -150,4 +150,3 @@ mod tests {
         assert_eq!(simulate_old_version("2.0.0-SNAPSHOT"), "2.0.0-SNAPSHOT");
     }
 }
-

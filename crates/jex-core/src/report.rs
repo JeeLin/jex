@@ -339,24 +339,34 @@ mod tests {
                 license_issues: 1,
             },
             outdated: vec![outdated::OutdatedDep {
-                group: "a".to_string(), artifact: "b".to_string(),
-                current: "1.0".to_string(), latest: "2.0".to_string(),
+                group: "a".to_string(),
+                artifact: "b".to_string(),
+                current: "1.0".to_string(),
+                latest: "2.0".to_string(),
             }],
             vulnerabilities: vec![audit::Vulnerability {
-                group: "c".to_string(), artifact: "d".to_string(),
-                current_version: "1.0".to_string(), cve_id: "CVE-1".to_string(),
-                severity: audit::Severity::High, description: "test".to_string(),
+                group: "c".to_string(),
+                artifact: "d".to_string(),
+                current_version: "1.0".to_string(),
+                cve_id: "CVE-1".to_string(),
+                severity: audit::Severity::High,
+                description: "test".to_string(),
                 fixed_version: None,
             }],
             licenses: vec![license::LicenseInfo {
-                group: "e".to_string(), artifact: "f".to_string(),
-                version: "1.0".to_string(), license: "MIT".to_string(),
-                spdx_id: "MIT".to_string(), category: license::LicenseCategory::Permissive,
+                group: "e".to_string(),
+                artifact: "f".to_string(),
+                version: "1.0".to_string(),
+                license: "MIT".to_string(),
+                spdx_id: "MIT".to_string(),
+                category: license::LicenseCategory::Permissive,
             }],
             tree: tree::DependencyTree {
                 root: tree::DependencyNode {
-                    name: "root".to_string(), version: "".to_string(),
-                    license: None, children: Vec::new(),
+                    name: "root".to_string(),
+                    version: "".to_string(),
+                    license: None,
+                    children: Vec::new(),
                 },
             },
         };
@@ -367,4 +377,3 @@ mod tests {
         assert!(output.contains("许可证问题: 1"));
     }
 }
-

@@ -348,7 +348,10 @@ mod tests {
             }),
             dependencies: Some({
                 let mut deps = HashMap::new();
-                deps.insert("com.google.code.gson:gson".to_string(), "2.11.0".to_string());
+                deps.insert(
+                    "com.google.code.gson:gson".to_string(),
+                    "2.11.0".to_string(),
+                );
                 deps
             }),
             repositories: Some({
@@ -534,7 +537,10 @@ mod tests {
             }),
             dependencies: Some({
                 let mut deps = HashMap::new();
-                deps.insert("com.google.code.gson:gson".to_string(), "2.11.0".to_string());
+                deps.insert(
+                    "com.google.code.gson:gson".to_string(),
+                    "2.11.0".to_string(),
+                );
                 deps.insert("org.slf4j:slf4j-api".to_string(), "2.0.9".to_string());
                 deps
             }),
@@ -723,7 +729,10 @@ mod tests {
             lockfile_version: Some(1),
             dependencies: Some({
                 let mut d = HashMap::new();
-                d.insert("org.junit.jupiter:junit-jupiter".to_string(), "5.10.0".to_string());
+                d.insert(
+                    "org.junit.jupiter:junit-jupiter".to_string(),
+                    "5.10.0".to_string(),
+                );
                 d
             }),
         };
@@ -731,7 +740,11 @@ mod tests {
         write_jex_lock(&lock).unwrap();
         let read_lock = read_jex_lock().unwrap();
         assert_eq!(
-            read_lock.dependencies.unwrap().get("org.junit.jupiter:junit-jupiter").unwrap(),
+            read_lock
+                .dependencies
+                .unwrap()
+                .get("org.junit.jupiter:junit-jupiter")
+                .unwrap(),
             "5.10.0"
         );
 
@@ -752,4 +765,3 @@ mod tests {
         std::env::set_current_dir(&orig).unwrap();
     }
 }
-

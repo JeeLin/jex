@@ -354,7 +354,7 @@ mod tests {
     fn test_get_or_compile_cache_hit() {
         let tmp = tempfile::tempdir().unwrap();
         let script = tmp.path().join("test.java");
-        std::fs::write(&script, "//DEPS a:b:1.0\npublic class Test {}"  ).unwrap();
+        std::fs::write(&script, "//DEPS a:b:1.0\npublic class Test {}").unwrap();
         let meta = ScriptMeta {
             java_version: None,
             deps: vec!["a:b:1.0".to_string()],

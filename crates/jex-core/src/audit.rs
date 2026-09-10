@@ -393,24 +393,40 @@ mod tests {
     fn test_generate_report_all_severities() {
         let vulns = vec![
             Vulnerability {
-                group: "a".to_string(), artifact: "a".to_string(),
-                current_version: "1.0".to_string(), cve_id: "CVE-1".to_string(),
-                severity: Severity::Critical, description: "".to_string(), fixed_version: None,
+                group: "a".to_string(),
+                artifact: "a".to_string(),
+                current_version: "1.0".to_string(),
+                cve_id: "CVE-1".to_string(),
+                severity: Severity::Critical,
+                description: "".to_string(),
+                fixed_version: None,
             },
             Vulnerability {
-                group: "b".to_string(), artifact: "b".to_string(),
-                current_version: "1.0".to_string(), cve_id: "CVE-2".to_string(),
-                severity: Severity::High, description: "".to_string(), fixed_version: None,
+                group: "b".to_string(),
+                artifact: "b".to_string(),
+                current_version: "1.0".to_string(),
+                cve_id: "CVE-2".to_string(),
+                severity: Severity::High,
+                description: "".to_string(),
+                fixed_version: None,
             },
             Vulnerability {
-                group: "c".to_string(), artifact: "c".to_string(),
-                current_version: "1.0".to_string(), cve_id: "CVE-3".to_string(),
-                severity: Severity::Medium, description: "".to_string(), fixed_version: None,
+                group: "c".to_string(),
+                artifact: "c".to_string(),
+                current_version: "1.0".to_string(),
+                cve_id: "CVE-3".to_string(),
+                severity: Severity::Medium,
+                description: "".to_string(),
+                fixed_version: None,
             },
             Vulnerability {
-                group: "d".to_string(), artifact: "d".to_string(),
-                current_version: "1.0".to_string(), cve_id: "CVE-4".to_string(),
-                severity: Severity::Low, description: "".to_string(), fixed_version: None,
+                group: "d".to_string(),
+                artifact: "d".to_string(),
+                current_version: "1.0".to_string(),
+                cve_id: "CVE-4".to_string(),
+                severity: Severity::Low,
+                description: "".to_string(),
+                fixed_version: None,
             },
         ];
 
@@ -455,7 +471,10 @@ mod tests {
         let vuln = serde_json::json!({
             "affected": [{"versions": [{"fixed": "2.11.0"}]}]
         });
-        assert_eq!(extract_fixed_version(&vuln, "2.10.0"), Some("2.11.0".to_string()));
+        assert_eq!(
+            extract_fixed_version(&vuln, "2.10.0"),
+            Some("2.11.0".to_string())
+        );
 
         // Fixed version not higher than current
         // Fixed version not higher than current (string comparison: "1.0.0" < "2.10.0")
@@ -510,9 +529,12 @@ mod tests {
     #[test]
     fn test_vulnerability_clone() {
         let v = Vulnerability {
-            group: "g".to_string(), artifact: "a".to_string(),
-            current_version: "1.0".to_string(), cve_id: "CVE-1".to_string(),
-            severity: Severity::High, description: "d".to_string(),
+            group: "g".to_string(),
+            artifact: "a".to_string(),
+            current_version: "1.0".to_string(),
+            cve_id: "CVE-1".to_string(),
+            severity: Severity::High,
+            description: "d".to_string(),
             fixed_version: Some("2.0".to_string()),
         };
         let v2 = v.clone();
@@ -520,4 +542,3 @@ mod tests {
         assert_eq!(v.severity, v2.severity);
     }
 }
-

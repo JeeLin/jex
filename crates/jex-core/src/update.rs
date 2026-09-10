@@ -283,12 +283,10 @@ mod tests {
 
     #[test]
     fn test_find_asset_url_not_found() {
-        let assets = vec![
-            GitHubAsset {
-                name: "jex-linux-amd64".to_string(),
-                browser_download_url: "https://example.com/jex-linux-amd64".to_string(),
-            },
-        ];
+        let assets = vec![GitHubAsset {
+            name: "jex-linux-amd64".to_string(),
+            browser_download_url: "https://example.com/jex-linux-amd64".to_string(),
+        }];
         let result = find_asset_url(&assets, &("windows".to_string(), "arm64".to_string()));
         assert!(result.is_err());
     }
@@ -296,16 +294,43 @@ mod tests {
     #[test]
     fn test_find_asset_url_multiple_platforms() {
         let assets = vec![
-            GitHubAsset { name: "jex-linux-amd64".to_string(), browser_download_url: "url1".to_string() },
-            GitHubAsset { name: "jex-linux-arm64".to_string(), browser_download_url: "url2".to_string() },
-            GitHubAsset { name: "jex-darwin-amd64".to_string(), browser_download_url: "url3".to_string() },
-            GitHubAsset { name: "jex-darwin-arm64".to_string(), browser_download_url: "url4".to_string() },
-            GitHubAsset { name: "jex-windows-amd64.exe".to_string(), browser_download_url: "url5".to_string() },
+            GitHubAsset {
+                name: "jex-linux-amd64".to_string(),
+                browser_download_url: "url1".to_string(),
+            },
+            GitHubAsset {
+                name: "jex-linux-arm64".to_string(),
+                browser_download_url: "url2".to_string(),
+            },
+            GitHubAsset {
+                name: "jex-darwin-amd64".to_string(),
+                browser_download_url: "url3".to_string(),
+            },
+            GitHubAsset {
+                name: "jex-darwin-arm64".to_string(),
+                browser_download_url: "url4".to_string(),
+            },
+            GitHubAsset {
+                name: "jex-windows-amd64.exe".to_string(),
+                browser_download_url: "url5".to_string(),
+            },
         ];
-        assert_eq!(find_asset_url(&assets, &("linux".to_string(), "arm64".to_string())).unwrap(), "url2");
-        assert_eq!(find_asset_url(&assets, &("darwin".to_string(), "amd64".to_string())).unwrap(), "url3");
-        assert_eq!(find_asset_url(&assets, &("darwin".to_string(), "arm64".to_string())).unwrap(), "url4");
-        assert_eq!(find_asset_url(&assets, &("windows".to_string(), "amd64".to_string())).unwrap(), "url5");
+        assert_eq!(
+            find_asset_url(&assets, &("linux".to_string(), "arm64".to_string())).unwrap(),
+            "url2"
+        );
+        assert_eq!(
+            find_asset_url(&assets, &("darwin".to_string(), "amd64".to_string())).unwrap(),
+            "url3"
+        );
+        assert_eq!(
+            find_asset_url(&assets, &("darwin".to_string(), "arm64".to_string())).unwrap(),
+            "url4"
+        );
+        assert_eq!(
+            find_asset_url(&assets, &("windows".to_string(), "amd64".to_string())).unwrap(),
+            "url5"
+        );
     }
 
     #[test]

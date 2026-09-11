@@ -201,6 +201,9 @@ struct SelfUpdateArgs {
 struct InitArgs {
     /// 项目名
     name: Option<String>,
+    /// 交互式向导模式
+    #[arg(short, long)]
+    interactive: bool,
 }
 
 #[derive(Args)]
@@ -548,7 +551,13 @@ fn run(cli: Cli) -> Result<()> {
             JdkCommand::Which => jdk::which(),
             JdkCommand::Doctor => jdk::doctor(),
         },
-        Commands::Init(a) => deps::init(a.name.as_deref()),
+        Commands::Init(a) => {
+            if a.interactive {
+                jex_core::tui::init_wizard::run_init_wizard()
+            } else {
+                deps::init(a.name.as_deref())
+            }
+        },
         Commands::Add(a) => deps::add(&a.coord, None),
         Commands::Remove(a) => deps::remove(&a.coord),
         Commands::Update => deps::update(None),

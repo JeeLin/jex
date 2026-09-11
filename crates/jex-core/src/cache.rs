@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn test_clean_cache_nonexistent() {
         let dir = tempfile::tempdir().unwrap();
-        let nonexistent = dir.path().join("does_not_exist");
+        let _nonexistent = dir.path().join("does_not_exist");
         // clean_cache for a nonexistent path should print warning and return Ok
         // We can't easily test global=true as it uses cache_path
         // Instead test the non-global path behavior by creating a temp cache dir

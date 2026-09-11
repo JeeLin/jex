@@ -169,7 +169,7 @@ mod tests {
         let mut pom = String::new();
         pom.push_str("<dependencies>\n");
         let deps = vec![("valid:dep", "1.0"), ("invalid-no-colon", "2.0")];
-        for (coord, ver) in &deps {
+        for (coord, _ver) in &deps {
             if let Ok((dep_group, dep_artifact)) = parse_coord(coord) {
                 pom.push_str(&format!(
                     "    <dependency>{}:{}</dependency>\n",
@@ -188,7 +188,7 @@ mod tests {
         let dependencies: Vec<(&str, &str)> = vec![];
         let mut pom = String::new();
         pom.push_str("    <dependencies>\n");
-        for (coord, ver) in &dependencies {
+        for (coord, _ver) in &dependencies {
             if let Ok((dep_group, dep_artifact)) = parse_coord(coord) {
                 pom.push_str(&format!(
                     "        <dependency>{}:{}</dependency>\n",

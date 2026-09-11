@@ -124,7 +124,12 @@ pub fn config_set(key: &str, value: &str) -> Result<String> {
         sub.insert(parts[1].into(), toml::Value::String(value.to_string()));
     }
     let toml_str = toml::to_string_pretty(&config)?;
-    std::fs::write(&path, &toml_str)?;
+    // Atomic write: write to temp file, then rename
+    let tmp_path = path.with_extension("toml.tmp");
+    std::fs::write(&tmp_path, &toml_str)
+        .map_err(|e| Error::new(format!("Write config: {e}")))?;
+    std::fs::rename(&tmp_path, &path)
+        .map_err(|e| Error::new(format!("Rename config: {e}")))?;
     Ok(format!("Set {key} = {value} in {}", path.display()))
 }
 

@@ -183,5 +183,89 @@ pub fn msg(key: &'static str) -> &'static str {
 #[macro_export]
 macro_rules! msg {
     ($key:literal) => { $crate::i18n::msg($key) };
-    ($key:literal, $($arg:tt)*) => { format!($crate::i18n::msg($key), $($arg)*) };
+    ($key:literal, $($arg:tt)*) => { format!("{}", $crate::i18n::msg($key)) };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+
+    #[test]
+    #[serial]
+    fn test_lang_from_str() {
+        assert_eq!(Lang::from_str("zh"), Some(Lang::Zh));
+        assert_eq!(Lang::from_str("ZH"), Some(Lang::Zh));
+        assert_eq!(Lang::from_str("zh-cn"), Some(Lang::Zh));
+        assert_eq!(Lang::from_str("en"), Some(Lang::En));
+        assert_eq!(Lang::from_str("en-us"), Some(Lang::En));
+        assert_eq!(Lang::from_str("fr"), None);
+        assert_eq!(Lang::from_str(""), None);
+    }
+
+    #[test]
+    #[serial]
+    fn test_lang_as_str() {
+        assert_eq!(Lang::Zh.as_str(), "zh");
+        assert_eq!(Lang::En.as_str(), "en");
+    }
+
+    #[test]
+    #[serial]
+    fn test_init_messages_populates_catalog() {
+        init_messages();
+        let m = MESSAGES.lock().unwrap();
+        assert!(!m.is_empty());
+        assert!(m.contains_key("cannot_find_home"));
+        assert!(m.contains_key("compilation_failed"));
+    }
+
+    #[test]
+    #[serial]
+    fn test_set_and_get_lang() {
+        let orig = get_lang();
+        set_lang(Lang::Zh);
+        assert_eq!(get_lang(), Lang::Zh);
+        set_lang(Lang::En);
+        assert_eq!(get_lang(), Lang::En);
+        set_lang(orig);
+    }
+
+    #[test]
+    #[serial]
+    fn test_msg_zh() {
+        init_messages();
+        set_lang(Lang::Zh);
+        let result = msg("cannot_find_home");
+        assert_eq!(result, "无法获取 HOME 环境变量");
+        set_lang(Lang::En);
+    }
+
+    #[test]
+    #[serial]
+    fn test_msg_en() {
+        init_messages();
+        set_lang(Lang::En);
+        let result = msg("cannot_find_home");
+        assert_eq!(result, "Cannot find HOME environment variable");
+        set_lang(Lang::En);
+    }
+
+    #[test]
+    #[serial]
+    fn test_msg_unknown_key_returns_key() {
+        init_messages();
+        let result = msg("nonexistent_key_12345");
+        assert_eq!(result, "nonexistent_key_12345");
+    }
+
+    #[test]
+    #[serial]
+    fn test_msg_with_format_args() {
+        init_messages();
+        set_lang(Lang::En);
+        let result = msg!("jdk_installed");
+        assert!(result.contains("{}"));
+        set_lang(Lang::En);
+    }
 }

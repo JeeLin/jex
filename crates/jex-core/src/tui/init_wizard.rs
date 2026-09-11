@@ -647,10 +647,8 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<bool
                     KeyCode::Left => app.prev_step(),
                     KeyCode::Char(c) if !c.is_control() => app.name_insert_char(c),
                     KeyCode::Backspace => app.name_delete_char(),
-                    KeyCode::Enter => {
-                        if !app.name_input.trim().is_empty() {
-                            app.next_step();
-                        }
+                    KeyCode::Enter if !app.name_input.trim().is_empty() => {
+                        app.next_step();
                     }
                     _ => {}
                 },

@@ -104,7 +104,14 @@ fn flatten_children(
         });
 
         if expanded.contains(&tree_idx) {
-            flatten_children(&child.children, depth + 1, tree_idx, expanded, filter, items);
+            flatten_children(
+                &child.children,
+                depth + 1,
+                tree_idx,
+                expanded,
+                filter,
+                items,
+            );
         }
     }
 }
@@ -115,9 +122,7 @@ fn has_matching_descendant(node: &DependencyNode, filter: &str) -> bool {
     }
     let lf = filter.to_lowercase();
     for child in &node.children {
-        if child.name.to_lowercase().contains(&lf)
-            || child.version.to_lowercase().contains(&lf)
-        {
+        if child.name.to_lowercase().contains(&lf) || child.version.to_lowercase().contains(&lf) {
             return true;
         }
         if has_matching_descendant(child, filter) {
@@ -273,8 +278,8 @@ fn ui(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(0),      // main area
-            Constraint::Length(1),   // status bar
+            Constraint::Min(0),    // main area
+            Constraint::Length(1), // status bar
         ])
         .split(f.area());
 
@@ -324,7 +329,9 @@ fn ui(f: &mut Frame, app: &App) {
                     Span::styled(format!("  v{}", item.version), version_style),
                     item.license
                         .as_ref()
-                        .map(|l| Span::styled(format!("  [{}]", l), Style::default().fg(Color::Blue)))
+                        .map(|l| {
+                            Span::styled(format!("  [{}]", l), Style::default().fg(Color::Blue))
+                        })
                         .unwrap_or_default(),
                 ];
                 ListItem::new(Line::from(spans))
@@ -344,7 +351,8 @@ fn ui(f: &mut Frame, app: &App) {
 
     // Status bar
     let status = if app.show_help {
-        " ↑↓/jk:移动  →/l:展开  ←/h:折叠  /:搜索  a:全部展开  c:全部折叠  q/Esc:退出  ?:帮助 ".to_string()
+        " ↑↓/jk:移动  →/l:展开  ←/h:折叠  /:搜索  a:全部展开  c:全部折叠  q/Esc:退出  ?:帮助 "
+            .to_string()
     } else if app.input_mode == InputMode::Search {
         format!(" /{}", app.filter)
     } else {
@@ -356,7 +364,8 @@ fn ui(f: &mut Frame, app: &App) {
         )
     };
 
-    let status_bar = Paragraph::new(status).style(Style::default().fg(Color::White).bg(Color::DarkGray));
+    let status_bar =
+        Paragraph::new(status).style(Style::default().fg(Color::White).bg(Color::DarkGray));
     f.render_widget(status_bar, status_area);
 
     // Help overlay
@@ -455,8 +464,8 @@ pub fn run_tree_interactive(tree: &DependencyTree) -> Result<()> {
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)
-        .map_err(|e| Error::new(format!("初始化终端失败: {e}")))?;
+    let mut terminal =
+        Terminal::new(backend).map_err(|e| Error::new(format!("初始化终端失败: {e}")))?;
 
     let mut app = App::new(tree);
 
@@ -472,16 +481,15 @@ pub fn run_tree_interactive(tree: &DependencyTree) -> Result<()> {
     result
 }
 
-fn run_app(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    app: &mut App,
-) -> Result<()> {
+fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App) -> Result<()> {
     loop {
         terminal
             .draw(|f| ui(f, app))
             .map_err(|e| Error::new(format!("绘制界面失败: {e}")))?;
 
-        if let Event::Key(key) = event::read().map_err(|e| Error::new(format!("读取事件失败: {e}")))? {
+        if let Event::Key(key) =
+            event::read().map_err(|e| Error::new(format!("读取事件失败: {e}")))?
+        {
             // Only handle key press events (ignore release)
             if key.kind != KeyEventKind::Press {
                 continue;

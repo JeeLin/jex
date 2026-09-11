@@ -182,8 +182,12 @@ pub fn msg(key: &'static str) -> &'static str {
 
 #[macro_export]
 macro_rules! msg {
-    ($key:literal) => { $crate::i18n::msg($key) };
-    ($key:literal, $($arg:tt)*) => { format!("{}", $crate::i18n::msg($key)) };
+    ($key:literal) => {
+        $crate::i18n::msg($key)
+    };
+    ($key:literal, $($arg:tt)*) => {
+        format!("{}", $crate::i18n::msg($key))
+    };
 }
 
 #[cfg(test)]

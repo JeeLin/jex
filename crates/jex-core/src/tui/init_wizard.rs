@@ -167,10 +167,7 @@ impl App {
     fn new() -> Self {
         let default_name = std::env::current_dir()
             .ok()
-            .and_then(|p| {
-                p.file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-            })
+            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
             .unwrap_or_else(|| "demo".to_string());
 
         let deps_len = COMMON_DEPS.len();
@@ -261,10 +258,7 @@ impl App {
         for (i, dep) in COMMON_DEPS.iter().enumerate() {
             if self.deps_selected.get(i).copied().unwrap_or(false) {
                 let coord = format!("{}:{}", dep.group, dep.artifact);
-                deps_section.push_str(&format!(
-                    "\"{}\" = \"{}\"\n",
-                    coord, dep.default_version
-                ));
+                deps_section.push_str(&format!("\"{}\" = \"{}\"\n", coord, dep.default_version));
             }
         }
 
@@ -303,7 +297,7 @@ fn ui(f: &mut Frame, app: &App) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3), // title + step indicator
-            Constraint::Min(0),   // main content
+            Constraint::Min(0),    // main content
             Constraint::Length(3), // navigation bar
         ])
         .split(area);
@@ -340,8 +334,22 @@ fn render_title_bar(f: &mut Frame, app: &App, area: Rect) {
 fn render_step_content(f: &mut Frame, app: &App, area: Rect) {
     match Step::from_index(app.current_step) {
         Step::Name => render_name_step(f, app, area),
-        Step::JavaVersion => render_list_step(f, app, area, "Select Java version", JAVA_VERSIONS, app.java_selected),
-        Step::BuildTool => render_list_step(f, app, area, "Select build tool", BUILD_TOOLS, app.build_selected),
+        Step::JavaVersion => render_list_step(
+            f,
+            app,
+            area,
+            "Select Java version",
+            JAVA_VERSIONS,
+            app.java_selected,
+        ),
+        Step::BuildTool => render_list_step(
+            f,
+            app,
+            area,
+            "Select build tool",
+            BUILD_TOOLS,
+            app.build_selected,
+        ),
         Step::Dependencies => render_deps_step(f, app, area),
         Step::Preview => render_preview_step(f, app, area),
     }
@@ -353,7 +361,7 @@ fn render_name_step(f: &mut Frame, app: &App, area: Rect) {
         .constraints([
             Constraint::Length(3), // input box
             Constraint::Length(2), // hint
-            Constraint::Min(0),   // spacer
+            Constraint::Min(0),    // spacer
         ])
         .split(area);
 
@@ -421,10 +429,7 @@ fn render_list_step(
                 Span::styled(marker, style),
                 Span::styled(check, style),
                 Span::styled(desc.to_string(), style),
-                Span::styled(
-                    format!("  ({})", val),
-                    Style::default().fg(Color::DarkGray),
-                ),
+                Span::styled(format!("  ({})", val), Style::default().fg(Color::DarkGray)),
             ]))
         })
         .collect();
@@ -466,10 +471,7 @@ fn render_deps_step(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(marker, style),
                 Span::styled(check, style),
                 Span::styled(dep.name.to_string(), style),
-                Span::styled(
-                    format!("  {}", coord),
-                    Style::default().fg(Color::DarkGray),
-                ),
+                Span::styled(format!("  {}", coord), Style::default().fg(Color::DarkGray)),
             ]))
         })
         .collect();
@@ -503,8 +505,8 @@ fn render_nav_bar(f: &mut Frame, app: &App, area: Rect) {
     let nav_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Min(0),   // navigation hints
-            Constraint::Length(1), // spacer
+            Constraint::Min(0),     // navigation hints
+            Constraint::Length(1),  // spacer
             Constraint::Length(20), // step dots
         ])
         .split(area);
@@ -531,39 +533,101 @@ fn render_nav_bar(f: &mut Frame, app: &App, area: Rect) {
     // Navigation hints
     let hints = match Step::from_index(app.current_step) {
         Step::Name => vec![
-            Span::styled("← →", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "← →",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" switch step  "),
-            Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "Enter",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" confirm  "),
-            Span::styled("q/Esc", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "q/Esc",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" cancel"),
         ],
         Step::Preview => vec![
-            Span::styled("←", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "←",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" back  "),
-            Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "Enter",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" generate jex.toml  "),
-            Span::styled("q/Esc", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "q/Esc",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" cancel"),
         ],
         Step::Dependencies => vec![
-            Span::styled("← →", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "← →",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" switch step  "),
-            Span::styled("↑ ↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "↑ ↓",
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" navigate  "),
-            Span::styled("Space", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "Space",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" toggle  "),
-            Span::styled("q/Esc", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "q/Esc",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" cancel"),
         ],
         _ => vec![
-            Span::styled("← →", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "← →",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" switch step  "),
-            Span::styled("↑ ↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "↑ ↓",
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" navigate  "),
-            Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "Enter",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" select  "),
-            Span::styled("q/Esc", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "q/Esc",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" cancel"),
         ],
     };
@@ -797,7 +861,7 @@ mod tests {
         app.name_input = "test-project".to_string();
         app.java_selected = 3; // Java 21
         app.build_selected = 1; // Maven
-        // No deps selected
+                                // No deps selected
         let content = app.build_jex_toml_content();
         assert!(content.contains("name = \"test-project\""));
         assert!(content.contains("java = \"21\""));

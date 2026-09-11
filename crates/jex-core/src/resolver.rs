@@ -65,7 +65,9 @@ fn search_versions(group: &str, artifact: &str) -> Result<Vec<String>> {
         .unwrap_or_else(|| "https://search.maven.org".to_string());
     let url = format!(
         "{}/solrsearch/select?q=g:{}+AND+a:{}&core=gav&rows=200&wt=json",
-        base.trim_end_matches('/'), group, artifact
+        base.trim_end_matches('/'),
+        group,
+        artifact
     );
     let body = http_get(&url)?;
     let sr: SearchResponse =
@@ -91,7 +93,12 @@ fn fetch_pom(group: &str, artifact: &str, version: &str) -> Result<String> {
         .unwrap_or_else(|| "https://repo1.maven.org/maven2".to_string());
     let url = format!(
         "{}/{}/{}/{}/{}-{}.pom",
-        base.trim_end_matches('/'), path, artifact, version, artifact, version
+        base.trim_end_matches('/'),
+        path,
+        artifact,
+        version,
+        artifact,
+        version
     );
     let body = http_get(&url)?;
     if body.is_empty() {

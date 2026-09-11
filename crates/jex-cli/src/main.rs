@@ -557,7 +557,7 @@ fn run(cli: Cli) -> Result<()> {
             } else {
                 deps::init(a.name.as_deref())
             }
-        },
+        }
         Commands::Add(a) => deps::add(&a.coord, None),
         Commands::Remove(a) => deps::remove(&a.coord),
         Commands::Update => deps::update(None),

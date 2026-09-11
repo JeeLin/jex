@@ -107,7 +107,6 @@ pub fn install(version: &str) -> Result<()> {
         return Ok(());
     }
 
-
     // 构建下载 URL
     let os = adoptium_os_str()?;
     let arch = adoptium_arch_str()?;
@@ -119,7 +118,11 @@ pub fn install(version: &str) -> Result<()> {
     let source_label;
     if let Some(mirror) = crate::config::config_jdk_mirror() {
         // mirror 示例: "https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
-        url = format!("{}/{}", mirror.trim_end_matches('/'), url.split("adoptium.net/").nth(1).unwrap_or(""));
+        url = format!(
+            "{}/{}",
+            mirror.trim_end_matches('/'),
+            url.split("adoptium.net/").nth(1).unwrap_or("")
+        );
         source_label = format!("镜像 ({})", mirror);
     } else {
         source_label = "Adoptium".to_string();
@@ -238,8 +241,7 @@ pub fn use_version(version: &str) -> Result<()> {
 #[allow(clippy::redundant_closure)]
 pub fn list() -> Result<()> {
     let installed = list_installed()?;
-    let current = current_version()?
-        .or_else(|| crate::config::config_default_jdk_version());
+    let current = current_version()?.or_else(|| crate::config::config_default_jdk_version());
 
     if installed.is_empty() {
         println!("未安装任何 JDK 版本");

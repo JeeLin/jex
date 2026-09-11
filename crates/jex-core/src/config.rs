@@ -126,10 +126,8 @@ pub fn config_set(key: &str, value: &str) -> Result<String> {
     let toml_str = toml::to_string_pretty(&config)?;
     // Atomic write: write to temp file, then rename
     let tmp_path = path.with_extension("toml.tmp");
-    std::fs::write(&tmp_path, &toml_str)
-        .map_err(|e| Error::new(format!("Write config: {e}")))?;
-    std::fs::rename(&tmp_path, &path)
-        .map_err(|e| Error::new(format!("Rename config: {e}")))?;
+    std::fs::write(&tmp_path, &toml_str).map_err(|e| Error::new(format!("Write config: {e}")))?;
+    std::fs::rename(&tmp_path, &path).map_err(|e| Error::new(format!("Rename config: {e}")))?;
     Ok(format!("Set {key} = {value} in {}", path.display()))
 }
 
@@ -149,40 +147,55 @@ pub fn config_list() -> Result<String> {
     }
 }
 
-
 /// Read jdk.default_version from config, or None
 pub fn config_default_jdk_version() -> Option<String> {
-    config_get("jdk.default_version").ok().map(|s| {
-        // toml::Value::String serializes as "value" with quotes
-        s.trim_matches('"').to_string()
-    }).filter(|s| !s.is_empty())
+    config_get("jdk.default_version")
+        .ok()
+        .map(|s| {
+            // toml::Value::String serializes as "value" with quotes
+            s.trim_matches('"').to_string()
+        })
+        .filter(|s| !s.is_empty())
 }
 
 /// Read jdk.mirror from config, or None
 pub fn config_jdk_mirror() -> Option<String> {
-    config_get("jdk.mirror").ok().map(|s| s.trim_matches('"').to_string()).filter(|s| !s.is_empty())
+    config_get("jdk.mirror")
+        .ok()
+        .map(|s| s.trim_matches('"').to_string())
+        .filter(|s| !s.is_empty())
 }
 
 /// Read proxy.http from config, or None
 pub fn config_proxy_http() -> Option<String> {
-    config_get("proxy.http").ok().map(|s| s.trim_matches('"').to_string()).filter(|s| !s.is_empty())
+    config_get("proxy.http")
+        .ok()
+        .map(|s| s.trim_matches('"').to_string())
+        .filter(|s| !s.is_empty())
 }
 
 /// Read proxy.https from config, or None
 pub fn config_proxy_https() -> Option<String> {
-    config_get("proxy.https").ok().map(|s| s.trim_matches('"').to_string()).filter(|s| !s.is_empty())
+    config_get("proxy.https")
+        .ok()
+        .map(|s| s.trim_matches('"').to_string())
+        .filter(|s| !s.is_empty())
 }
 
 /// Read cache.max_size from config, or default 1GB
 pub fn config_cache_max_size() -> u64 {
-    config_get("cache.max_size").ok()
+    config_get("cache.max_size")
+        .ok()
         .and_then(|s| s.trim_matches('"').parse::<u64>().ok())
         .unwrap_or(1024 * 1024 * 1024)
 }
 
 /// Read maven.central_mirror from config, or None
 pub fn config_maven_mirror() -> Option<String> {
-    config_get("maven.central_mirror").ok().map(|s| s.trim_matches('"').to_string()).filter(|s| !s.is_empty())
+    config_get("maven.central_mirror")
+        .ok()
+        .map(|s| s.trim_matches('"').to_string())
+        .filter(|s| !s.is_empty())
 }
 
 #[cfg(test)]

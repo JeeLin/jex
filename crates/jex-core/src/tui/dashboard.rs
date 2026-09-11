@@ -103,15 +103,8 @@ impl DashboardData {
                     .as_ref()
                     .map(|p| p.name.clone())
                     .unwrap_or_else(|| "(未命名)".to_string());
-                self.java_version = config
-                    .project
-                    .as_ref()
-                    .and_then(|p| p.java.clone());
-                self.dependency_count = config
-                    .dependencies
-                    .as_ref()
-                    .map(|d| d.len())
-                    .unwrap_or(0);
+                self.java_version = config.project.as_ref().and_then(|p| p.java.clone());
+                self.dependency_count = config.dependencies.as_ref().map(|d| d.len()).unwrap_or(0);
             }
             Err(e) => {
                 self.project_name = format!("读取失败: {e}");
@@ -242,7 +235,7 @@ fn ui(f: &mut Frame, app: &App) {
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Length(20), // nav panel
-            Constraint::Min(0),    // content panel
+            Constraint::Min(0),     // content panel
         ])
         .split(main_area);
 
@@ -365,11 +358,7 @@ fn render_overview(f: &mut Frame, app: &App, area: Rect) {
         ),
     ]));
 
-    let java_ver = app
-        .data
-        .java_version
-        .as_deref()
-        .unwrap_or("未指定");
+    let java_ver = app.data.java_version.as_deref().unwrap_or("未指定");
     lines.push(Line::from(vec![
         Span::styled("  Java 版本: ", Style::default().fg(Color::DarkGray)),
         Span::styled(java_ver, Style::default().fg(Color::White)),
@@ -378,12 +367,7 @@ fn render_overview(f: &mut Frame, app: &App, area: Rect) {
     lines.push(Line::from(""));
 
     // Summary line
-    let outdated_count = app
-        .data
-        .outdated
-        .as_ref()
-        .map(|v| v.len())
-        .unwrap_or(0);
+    let outdated_count = app.data.outdated.as_ref().map(|v| v.len()).unwrap_or(0);
     let vuln_count = app
         .data
         .audit_report
@@ -464,25 +448,21 @@ fn render_outdated(f: &mut Frame, app: &App, area: Rect) {
 
     match &app.data.outdated {
         Some(deps) if deps.is_empty() => {
-            let msg = vec![
-                Line::from(Span::styled(
-                    " ✅ 所有依赖已是最新版本",
-                    Style::default().fg(Color::Green),
-                )),
-            ];
+            let msg = vec![Line::from(Span::styled(
+                " ✅ 所有依赖已是最新版本",
+                Style::default().fg(Color::Green),
+            ))];
             let paragraph = Paragraph::new(msg).wrap(Wrap { trim: false });
             f.render_widget(paragraph, area);
         }
         Some(deps) => {
             let mut lines: Vec<Line> = Vec::new();
-            lines.push(Line::from(vec![
-                Span::styled(
-                    format!(" 找到 {} 个可更新依赖", deps.len()),
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-            ]));
+            lines.push(Line::from(vec![Span::styled(
+                format!(" 找到 {} 个可更新依赖", deps.len()),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )]));
             lines.push(Line::from(""));
 
             for dep in deps {
@@ -494,10 +474,7 @@ fn render_outdated(f: &mut Frame, app: &App, area: Rect) {
                     ),
                 ]));
                 lines.push(Line::from(vec![
-                    Span::styled(
-                        "    ",
-                        Style::default(),
-                    ),
+                    Span::styled("    ", Style::default()),
                     Span::styled(
                         format!("{} → {}", dep.current, dep.latest),
                         Style::default().fg(Color::Cyan),
@@ -506,21 +483,16 @@ fn render_outdated(f: &mut Frame, app: &App, area: Rect) {
             }
 
             // Apply scroll offset
-            let scrolled: Vec<Line> = lines
-                .into_iter()
-                .skip(app.content_scroll)
-                .collect();
+            let scrolled: Vec<Line> = lines.into_iter().skip(app.content_scroll).collect();
 
             let paragraph = Paragraph::new(scrolled).wrap(Wrap { trim: false });
             f.render_widget(paragraph, area);
         }
         None => {
-            let msg = vec![
-                Line::from(Span::styled(
-                    "  加载中...",
-                    Style::default().fg(Color::DarkGray),
-                )),
-            ];
+            let msg = vec![Line::from(Span::styled(
+                "  加载中...",
+                Style::default().fg(Color::DarkGray),
+            ))];
             let paragraph = Paragraph::new(msg).wrap(Wrap { trim: false });
             f.render_widget(paragraph, area);
         }
@@ -566,9 +538,7 @@ fn render_audit(f: &mut Frame, app: &App, area: Rect) {
 
             lines.push(Line::from(Span::styled(
                 format!(" 发现 {} 个安全漏洞", report.total_vulnerabilities),
-                Style::default()
-                    .fg(Color::Red)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             )));
             lines.push(Line::from(""));
 
@@ -580,10 +550,7 @@ fn render_audit(f: &mut Frame, app: &App, area: Rect) {
                     Style::default().fg(Color::Red),
                 ),
                 Span::styled("  HIGH: ", Style::default().fg(Color::Red)),
-                Span::styled(
-                    format!("{}", report.high),
-                    Style::default().fg(Color::Red),
-                ),
+                Span::styled(format!("{}", report.high), Style::default().fg(Color::Red)),
             ]));
             lines.push(Line::from(vec![
                 Span::styled("  MEDIUM:   ", Style::default().fg(Color::Yellow)),
@@ -592,10 +559,7 @@ fn render_audit(f: &mut Frame, app: &App, area: Rect) {
                     Style::default().fg(Color::Yellow),
                 ),
                 Span::styled("  LOW:      ", Style::default().fg(Color::Green)),
-                Span::styled(
-                    format!("{}", report.low),
-                    Style::default().fg(Color::Green),
-                ),
+                Span::styled(format!("{}", report.low), Style::default().fg(Color::Green)),
             ]));
             lines.push(Line::from(""));
 
@@ -617,27 +581,20 @@ fn render_audit(f: &mut Frame, app: &App, area: Rect) {
                         Style::default().fg(Color::White),
                     ),
                 ]));
-                lines.push(Line::from(vec![
-                    Span::styled(
-                        format!("    {}", vuln.description),
-                        Style::default().fg(Color::DarkGray),
-                    ),
-                ]));
+                lines.push(Line::from(vec![Span::styled(
+                    format!("    {}", vuln.description),
+                    Style::default().fg(Color::DarkGray),
+                )]));
                 if let Some(fix) = audit::get_fix_suggestion(vuln) {
-                    lines.push(Line::from(vec![
-                        Span::styled(
-                            format!("    修复: {fix}"),
-                            Style::default().fg(Color::Cyan),
-                        ),
-                    ]));
+                    lines.push(Line::from(vec![Span::styled(
+                        format!("    修复: {fix}"),
+                        Style::default().fg(Color::Cyan),
+                    )]));
                 }
                 lines.push(Line::from(""));
             }
 
-            let scrolled: Vec<Line> = lines
-                .into_iter()
-                .skip(app.content_scroll)
-                .collect();
+            let scrolled: Vec<Line> = lines.into_iter().skip(app.content_scroll).collect();
 
             let paragraph = Paragraph::new(scrolled).wrap(Wrap { trim: false });
             f.render_widget(paragraph, area);
@@ -691,16 +648,11 @@ fn render_license(f: &mut Frame, app: &App, area: Rect) {
             )));
             lines.push(Line::from(""));
 
-            let total = report.compatible.len()
-                + report.incompatible.len()
-                + report.unknown.len();
+            let total = report.compatible.len() + report.incompatible.len() + report.unknown.len();
 
             lines.push(Line::from(vec![
                 Span::styled("  总计:   ", Style::default().fg(Color::DarkGray)),
-                Span::styled(
-                    format!("{total} 个依赖"),
-                    Style::default().fg(Color::White),
-                ),
+                Span::styled(format!("{total} 个依赖"), Style::default().fg(Color::White)),
             ]));
             lines.push(Line::from(vec![
                 Span::styled("  兼容:   ", Style::default().fg(Color::DarkGray)),
@@ -728,14 +680,13 @@ fn render_license(f: &mut Frame, app: &App, area: Rect) {
                 lines.push(Line::from(""));
                 lines.push(Line::from(Span::styled(
                     " 不兼容的依赖:",
-                    Style::default()
-                        .fg(Color::Red)
-                        .add_modifier(Modifier::BOLD),
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                 )));
                 for dep in &report.incompatible {
-                    lines.push(Line::from(vec![
-                        Span::styled(format!("  ❌ {dep}"), Style::default().fg(Color::Red)),
-                    ]));
+                    lines.push(Line::from(vec![Span::styled(
+                        format!("  ❌ {dep}"),
+                        Style::default().fg(Color::Red),
+                    )]));
                 }
             }
 
@@ -748,16 +699,14 @@ fn render_license(f: &mut Frame, app: &App, area: Rect) {
                         .add_modifier(Modifier::BOLD),
                 )));
                 for dep in &report.unknown {
-                    lines.push(Line::from(vec![
-                        Span::styled(format!("  ❓ {dep}"), Style::default().fg(Color::Yellow)),
-                    ]));
+                    lines.push(Line::from(vec![Span::styled(
+                        format!("  ❓ {dep}"),
+                        Style::default().fg(Color::Yellow),
+                    )]));
                 }
             }
 
-            let scrolled: Vec<Line> = lines
-                .into_iter()
-                .skip(app.content_scroll)
-                .collect();
+            let scrolled: Vec<Line> = lines.into_iter().skip(app.content_scroll).collect();
 
             let paragraph = Paragraph::new(scrolled).wrap(Wrap { trim: false });
             f.render_widget(paragraph, area);
@@ -787,11 +736,8 @@ fn render_status_bar(f: &mut Frame, app: &App, area: Rect) {
         )
     };
 
-    let status_bar = Paragraph::new(status).style(
-        Style::default()
-            .fg(Color::White)
-            .bg(Color::DarkGray),
-    );
+    let status_bar =
+        Paragraph::new(status).style(Style::default().fg(Color::White).bg(Color::DarkGray));
     f.render_widget(status_bar, area);
 }
 
@@ -865,8 +811,8 @@ pub fn run_dashboard() -> Result<()> {
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)
-        .map_err(|e| Error::new(format!("初始化终端失败: {e}")))?;
+    let mut terminal =
+        Terminal::new(backend).map_err(|e| Error::new(format!("初始化终端失败: {e}")))?;
 
     let mut app = App::new();
 
@@ -882,10 +828,7 @@ pub fn run_dashboard() -> Result<()> {
     result
 }
 
-fn run_app(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    app: &mut App,
-) -> Result<()> {
+fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App) -> Result<()> {
     loop {
         terminal
             .draw(|f| ui(f, app))

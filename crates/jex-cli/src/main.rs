@@ -400,6 +400,9 @@ struct TreeArgs {
     /// 按名称/许可证/漏洞过滤依赖
     #[arg(short, long)]
     filter: Option<String>,
+    /// 交互式依赖树浏览
+    #[arg(short, long)]
+    interactive: bool,
 }
 
 #[derive(Subcommand)]
@@ -584,7 +587,10 @@ fn run(cli: Cli) -> Result<()> {
             Ok(())
         }
         Commands::Tree(a) => {
-            if a.verbose {
+            if a.interactive {
+                let tree = tree::build_dependency_tree()?;
+                jex_core::tui::tree_view::run_tree_interactive(&tree)?;
+            } else if a.verbose {
                 let mut report = tree_verbose::tree_verbose()?;
 
                 // 应用过滤

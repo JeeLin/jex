@@ -15,7 +15,7 @@ reqwest.workspace = true
 quick-xml.workspace = true
 dirs.workspace = true
 notify.workspace = true
-
+ratatui.workspace = true
 [dev-dependencies]
 tempfile.workspace = true
 serial_test.workspace = true

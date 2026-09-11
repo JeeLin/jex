@@ -150,6 +150,8 @@ enum Commands {
     /// 热重载：监听文件变更自动编译运行
     #[command(alias = "w")]
     Watch(WatchArgs),
+    /// 交互式项目健康度仪表盘
+    Dashboard,
 }
 #[derive(Subcommand)]
 enum JdkCommand {
@@ -1098,6 +1100,7 @@ fn run(cli: Cli) -> Result<()> {
                 Ok(())
             })
         }
+        Commands::Dashboard => jex_core::tui::dashboard::run_dashboard(),
     }
 }
 

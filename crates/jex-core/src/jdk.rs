@@ -235,6 +235,7 @@ pub fn use_version(version: &str) -> Result<()> {
 }
 
 /// 列出已安装版本和当前版本
+#[allow(clippy::redundant_closure)]
 pub fn list() -> Result<()> {
     let installed = list_installed()?;
     let current = current_version()?

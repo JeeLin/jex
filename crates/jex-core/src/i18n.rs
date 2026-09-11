@@ -8,7 +8,7 @@ pub enum Lang {
 }
 
 impl Lang {
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_lang(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "zh" | "zh-cn" => Some(Lang::Zh),
             "en" | "en-us" => Some(Lang::En),
@@ -194,13 +194,13 @@ mod tests {
     #[test]
     #[serial]
     fn test_lang_from_str() {
-        assert_eq!(Lang::from_str("zh"), Some(Lang::Zh));
-        assert_eq!(Lang::from_str("ZH"), Some(Lang::Zh));
-        assert_eq!(Lang::from_str("zh-cn"), Some(Lang::Zh));
-        assert_eq!(Lang::from_str("en"), Some(Lang::En));
-        assert_eq!(Lang::from_str("en-us"), Some(Lang::En));
-        assert_eq!(Lang::from_str("fr"), None);
-        assert_eq!(Lang::from_str(""), None);
+        assert_eq!(Lang::parse_lang("zh"), Some(Lang::Zh));
+        assert_eq!(Lang::parse_lang("ZH"), Some(Lang::Zh));
+        assert_eq!(Lang::parse_lang("zh-cn"), Some(Lang::Zh));
+        assert_eq!(Lang::parse_lang("en"), Some(Lang::En));
+        assert_eq!(Lang::parse_lang("en-us"), Some(Lang::En));
+        assert_eq!(Lang::parse_lang("fr"), None);
+        assert_eq!(Lang::parse_lang(""), None);
     }
 
     #[test]

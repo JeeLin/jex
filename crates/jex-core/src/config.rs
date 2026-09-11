@@ -61,7 +61,7 @@ pub fn read_language_config() -> crate::i18n::Lang {
                     .and_then(|s| s.get("lang"))
                     .and_then(|v| v.as_str())
                 {
-                    if let Some(lang) = crate::i18n::Lang::from_str(ls) {
+                    if let Some(lang) = crate::i18n::Lang::parse_lang(ls) {
                         return lang;
                     }
                 }
@@ -69,7 +69,7 @@ pub fn read_language_config() -> crate::i18n::Lang {
         }
     }
     if let Ok(e) = std::env::var("JEX_LANG") {
-        if let Some(lang) = crate::i18n::Lang::from_str(&e) {
+        if let Some(lang) = crate::i18n::Lang::parse_lang(&e) {
             return lang;
         }
     }
